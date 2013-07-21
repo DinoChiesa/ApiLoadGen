@@ -7,18 +7,20 @@ Load Generator tool for APIs
 Overview
 ----------------------
 
-This is going a server-based NodeJS app that manages "jobs" that
-generate requests for APIs, according to rules and parameters set
-out in a job definition.  Tunable variables include: volume of
-requests, the set of requests that should be performed in a
-sequence, whether to vary the X-Forwarded-For header,
+This is (going to be) a server-based NodeJS app that
+manages "jobs" that generate requests for APIs, according to
+rules and parameters set out in a job definition. Settings
+within a job definition include: the volume of
+requests for a given time of day; the set of requests that should
+be performed in a sequence, including any of the contents of an
+HTTP request; whether to vary the X-Forwarded-For header,
 authentication information, and other things.
 
 The contrived requests then constitute an artificial "load" on an
-API. The ability to generate artificial load can serve a number
-of uses.  In particular, if these requests are directed to an
-interface that is managed by the Apigee API Manager, it allows
-the Apigee Analytics charts to present interesting data.
+API. The ability to generate artificial load can serve a number of
+uses. In particular, if these requests are directed to an interface that
+is managed by the Apigee API Manager, it allows the Apigee Analytics
+charts to present interesting-looking data.
 
 
 Job Control
@@ -83,13 +85,11 @@ nodejs app just yet. I'm getting there.
 Interesting Files
 ----------------------
 
-retrieve1.js
-
+* `retrieve1.js`
 shows how to retrieve the "job model" from App Services
 
 
-run3.js
-
+* `run3.js`
 shows how to retrieve the all the stored jobs, and then run each one.
 
 
@@ -101,7 +101,7 @@ Notes
 The JS files here are NodeJS scripts.  They also require some other
 node modules, including: q, sleep, restify, assert, and fs.  To run these sripts you may have to:
 
-   npm install q restify sleep
+ `$ npm install q restify sleep`
 
 in your local directory.
 
@@ -118,11 +118,11 @@ or you can use promises to untangle that mess.
 Bugs
 ----------------------
 
-- The README is lame
+- The README is incomplete
+- DELETE is not yet supported as a request type
 - The settings for the job store are hardcoded to an open App Services app under my personal ccount.
-- Not tested for use on server
+- No server implementation yet; no job control.
 - The sleep time between jobs is not dependent upon the run time of a job or set of jobs. It should be.
-- execution of multiple jobs is done serially.
-- There's no companion UI to create job definitions
-- There's no variable load generation. Each job should be designated to run a given # of times per hour. Then the runner should divide that by 12 to get the number of runs every 5 minutes.
-- Currently no way to set a variable X-Forwarded-For header.  There ought to be  way to allow a weighted-random selection of XFF.
+- There's no companion UI to create job definitions or inquire their status.  Should be done in angularJS!
+- Variable load generation is not implemented yet. Each job should be designated to run a given # of times per hour. Then the runner should divide that by 12 to get the number of runs every 5 minutes.
+- Currently no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.
