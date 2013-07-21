@@ -33,3 +33,4 @@ Bugs
 - Not tested for use on server
 - The sleep time between jobs is not dependent upon the run time of a job or set of jobs. It should be.
 - execution of multiple jobs is done serially.
+- There's no companion UI to create job definitions
