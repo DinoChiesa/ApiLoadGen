@@ -29,6 +29,7 @@ Bugs
 ----------------------
 
 - The README is lame
+- The settings for the jobstore are hardcoded to an open App Services app under my personal ccount.
 - Not tested for use on server
 - The sleep time is not dependent upon the run time
 - execution of multiple jobs is done serially.
