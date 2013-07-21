@@ -21,8 +21,22 @@ shows how to retrieve the job model and then run it.
 Notes
 ----------------------
 
-These JS files are NodeJS scripts.  They also require some other
-node modules, including: q, sleep, restify, assert, and fs.
+The JS files here are NodeJS scripts.  They also require some other
+node modules, including: q, sleep, restify, assert, and fs.  To run these sripts you may have to:
+
+   npm install q restify sleep
+
+in your local directory.
+
+
+The q module implements promises, which is a framework for
+managing ordered execution of asynchronous operations. When you
+have a chain of asynch operations, like HTTP calls, and the
+subsequent operation should be performed only after the prior op
+completes, you can designed a giant pyramid of nested callbacks,
+or you can use promises to untangle that mess.
+
+
 
 
 Bugs
