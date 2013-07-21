@@ -49,26 +49,26 @@ optionally a payload for the request.
 
 For example:
 
-   GET /{entity-collection}
+* `GET /{entity-collection}`
     Get the list of defined entities of the given type. The collection
     should be one of {jobs, sequences, requests, lprofile}
 
-   POST /{entity-collection}
+* `POST /{entity-collection}`
     create a new entity, given the posted entity definition.
 
-   GET /{entity-collection}/{entity-id}
+* `GET /{entity-collection}/{entity-id}`
 
-   PUT /{entity-collection}/{entity-id}
-     partial put to update an entity definition.
+* `PUT /{entity-collection}/{entity-id}`
+   partial put to update an entity definition.
 
 
 In addition, there are a few job control APIs:
 
-   POST /jobs/{job-id}?action=start
-     begin running the job. The job runs "forever".
+* `POST /jobs/{job-id}?action=start`
+   begin running the job. The job runs "forever".
 
-   POST /jobs/{job-id}?action=stop
-     stop running the job.
+* `POST /jobs/{job-id}?action=stop`
+   stop running the job.
 
 
 
