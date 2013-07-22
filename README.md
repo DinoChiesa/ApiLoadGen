@@ -35,7 +35,7 @@ headers to send with each request, 1..N "included" request
 sequences, and a reference to a load-profile.  (FYI: All of the
 job definition metadata is stored in App Services. In this
 case, "includes" is an App Services entity relationship, so that
-a GET on /org/app/jobs/{job-id}/includes/sequences will give all
+a GET on `/org/app/jobs/{job-id}/includes/sequences` will give all
 the sequences.)  The load profile simply describes how many
 requests to make in a given hour of the day.
 
@@ -51,25 +51,25 @@ optionally a payload for the request.
 
 For example:
 
-* `GET /{entity-collection}`
+* `GET /{entity-collection}`  
     Get the list of defined entities of the given type. The collection
     should be one of {jobs, sequences, requests, lprofile}
 
-* `POST /{entity-collection}`
+* `POST /{entity-collection}`  
     create a new entity, given the posted entity definition.
 
-* `GET /{entity-collection}/{entity-id}`
+* `GET /{entity-collection}/{entity-id}`  
 
-* `PUT /{entity-collection}/{entity-id}`
+* `PUT /{entity-collection}/{entity-id}`  
    partial put to update an entity definition.
 
 
 In addition, there are a few job control APIs:
 
-* `POST /jobs/{job-id}?action=start`
+* `POST /jobs/{job-id}?action=start`  
    begin running the job. The job runs "forever".
 
-* `POST /jobs/{job-id}?action=stop`
+* `POST /jobs/{job-id}?action=stop`  
    stop running the job.
 
 
