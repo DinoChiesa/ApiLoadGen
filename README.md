@@ -23,31 +23,33 @@ is managed by the Apigee API Manager, it allows the Apigee Analytics
 charts to present interesting-looking data.
 
 
-Job Control
+Data Model
 ----------------------
 
 The NodeJS app is itself strictly an API server.  It presents a
 simple interface to manage resources known as jobs, sequences,
 and requests.
 
-Jobs consist of a server name and scheme, a set of default http
-headers to send with each request, 1..N "included" request
-sequences, and a reference to a load-profile.  (FYI: All of the
-job definition metadata is stored in App Services. In this
-case, "includes" is an App Services entity relationship, so that
-a GET on `/org/app/jobs/{job-id}/includes/sequences` will give all
-the sequences.)  The load profile simply describes how many
-requests to make in a given hour of the day.
+Jobs consist of a server name and scheme, a set of default http headers
+to send with each request, 1..N "included" request sequences, and a
+reference to a load-profile.  (FYI: All of the job definition metadata
+is stored in App Services. In this case, "includes" is an App Services
+entity relationship, so that a GET on
+`/org/app/jobs/{job-id}/includes/sequences` will give all the
+sequences. But actually this server obscures the /org/app part of the
+App Services url, so the url starts with /jobs....)  The load profile
+simply describes how many requests to make in a given hour of the day.
 
 A sequence consists of 1..M "request implementations", a desired
-iteration count for th sequence (1..?), and a time to delay
-between iterations.  The request implementations are a nested
+iteration count for the sequence (1..?), and a time to delay
+between iterations. The request implementations are a child
 object containing a reference to a request entity (==uuid), and a set of
 extractions to perform on the response.
 
-A request consiste of a descriptive name, an HTTP verb, a url
+A request consists of a descriptive name, an HTTP verb, a url
 path, a set of 0..P HTTP headers particular for this request, and
 optionally a payload for the request.
+
 
 For example:
 
@@ -64,7 +66,17 @@ For example:
    partial put to update an entity definition.
 
 
-In addition, there are a few job control APIs:
+Example: A typical flow might be a job with 2 sequences; the first will
+consist of a single request, that obtains a token, and then extracts the
+OAuth Bearer token. The second sequence consists of a series of 3
+requests that is performed a variable number of times using that token.
+
+
+
+Job Control
+----------------------
+
+In addition to the data access APIs shown above, there are a few job control APIs:
 
 * `POST /jobs/{job-id}?action=start`  
    begin running the job. The job runs "forever".
@@ -93,7 +105,7 @@ a Nodejs program intended for use from the command line. It shows how to retriev
 another nodejs command-line tool, shows how to retrieve the all the stored jobs, and then run each one.
 
 * `server3.js`  
-a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs, sequences, and requests under management. 
+a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs, sequences, and requests under management.
 
 
 
