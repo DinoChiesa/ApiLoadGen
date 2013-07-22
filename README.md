@@ -26,9 +26,11 @@ charts to present interesting-looking data.
 Data Model
 ----------------------
 
-The NodeJS app is itself strictly an API server.  It presents a
-simple interface to manage resources known as jobs, sequences,
-and requests.
+The NodeJS app is itself strictly an API server.  It presents a simple
+interface to manage resources known as jobs, sequences, and
+requests. The main point is to generate load, but before generating load
+we have to know what kind of requests to send. This brings us to the
+data model.
 
 Jobs consist of a server name and scheme, a set of default http headers
 to send with each request, 1..N "included" request sequences, and a
@@ -89,8 +91,8 @@ In addition to the data access APIs shown above, there are a few job control API
 Status
 ----------------------
 
-This is currently a proof of concept. There is no server-side
-nodejs app just yet. I'm getting there.
+This is currently a proof of concept. The nodejs server
+app doesn't really do job control just yet. I'm getting there.
 
 
 
