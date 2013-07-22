@@ -85,12 +85,15 @@ nodejs app just yet. I'm getting there.
 Interesting Files
 ----------------------
 
-* `retrieve1.js`
-shows how to retrieve the "job model" from App Services
+* `retrieve1.js`  
+a Nodejs program intended for use from the command line. It shows how to retrieve the "job model" from App Services
 
 
-* `run3.js`
-shows how to retrieve the all the stored jobs, and then run each one.
+* `run3.js`  
+another nodejs command-line tool, shows how to retrieve the all the stored jobs, and then run each one.
+
+* `server3.js`  
+a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs, sequences, and requests under management. 
 
 
 
@@ -106,23 +109,23 @@ node modules, including: q, sleep, restify, assert, and fs.  To run these sripts
 in your local directory.
 
 
-The q module implements promises, which is a framework for
-managing ordered execution of asynchronous operations. When you
-have a chain of asynch operations, like HTTP calls, and the
-subsequent operation should be performed only after the prior op
-completes, you can designed a giant pyramid of nested callbacks,
-or you can use promises to untangle that mess.
+The q module implements promises, which is a framework for managing
+ordered execution of asynchronous operations. When you have a chain of
+asynch operations that you'd like to perform in order, like a series of
+HTTP calls, and the subsequent operation should be performed only after
+the prior op completes, you can design a giant pyramid of nested
+callbacks, or you can use promises to untangle that mess.
 
+Read more at https://github.com/promises-aplus/promises-spec
 
 
 Bugs
 ----------------------
 
-- The README is incomplete
-- DELETE is not yet supported as a request type
+- DELETE is not yet supported as a request type in the requests that comprise a job
 - The settings for the job store are hardcoded to an open App Services app under my personal ccount.
-- No server implementation yet; no job control.
+- The server implementation is incomplete; no job control yet.
 - The sleep time between jobs is not dependent upon the run time of a job or set of jobs. It should be.
 - There's no companion UI to create job definitions or inquire their status.  Should be done in angularJS!
-- Variable load generation is not implemented yet. Each job should be designated to run a given # of times per hour. Then the runner should divide that by 12 to get the number of runs every 5 minutes.
+- Variable load generation is not implemented yet. In other words, there's no such thing as a load profile resource. Each job should be designated to run a given # of times per hour. Then the runner should divide that by 12 to get the number of runs every 5 minutes.
 - Currently no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.
