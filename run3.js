@@ -16,7 +16,7 @@
 //   npm install restify sleep q
 //
 // created: Wed Jul 17 18:42:20 2013
-// last saved: <2013-July-21 11:24:19>
+// last saved: <2013-July-22 09:44:59>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa and Apigee Corp
@@ -28,7 +28,7 @@ var assert = require('assert'),
     restify = require('restify'),
     q = require ('q'),
     sleep = require('sleep'),
-    fs = require('fs'),
+    //fs = require('fs'),
     wantContinuousRunning,
     sleepTimeInMs = 5 * 60 * 1000, // not really - this discounts runtime
     //sleepTimeInMs = 30 * 1000, // for testing only
@@ -219,7 +219,7 @@ function reportModel (context) {
 }
 
 
-function retrieveSequencesForOneJob(ctx) {
+function retrieveSequencesForEachJob(ctx) {
   return (function (context) {
     var deferred,
         query = "select * where type = 'sequence'",
@@ -250,7 +250,7 @@ function retrieveSequencesForOneJob(ctx) {
 
     return deferred.promise
       .then(retrieveRequestsForOneSequence)
-      .then(retrieveSequencesForOneJob);
+      .then(retrieveSequencesForEachJob);
 
   }(ctx));
 }
@@ -498,7 +498,7 @@ wantContinuousRunning = true;
 p = q
   .fcall(retrieveJobs)
   .then(reportJobCount)
-  .then(retrieveSequencesForOneJob)
+  .then(retrieveSequencesForEachJob)
   .then(reportModel)
   .then(initializeRunStateAndKickoff);
 

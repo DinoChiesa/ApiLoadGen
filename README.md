@@ -34,7 +34,7 @@ data model.
 
 Jobs consist of a server name and scheme, a set of default http headers
 to send with each request, 1..N "included" request sequences, and a
-reference to a load-profile.  (FYI: All of the job definition metadata
+reference to a load-profile. (FYI: All of the job definition metadata
 is stored in App Services. In this case, "includes" is an App Services
 entity relationship, so that a GET on
 `/org/app/jobs/{job-id}/includes/sequences` will give all the
