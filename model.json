@@ -43,7 +43,7 @@
         "authorization" : "Bearer {oauth_bearer_token}"
       }, 
       "delayBefore" : 0,
-      "responseExtracts" : [{
+      "extracts" : [{
         "description" : "extract the uuids of the returned entities",
         "fn" : "function(obj) {var i,a=[]; for(i=0;i<obj.entities.length;i++){a.push(obj.entities[i].uuid);} return a;}",
         "valueRef" : "uuids"
