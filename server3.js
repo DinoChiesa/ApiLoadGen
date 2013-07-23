@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-22 10:11:13>
+// last saved: <2013-July-23 15:17:38>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -71,7 +71,7 @@ function logTransaction(e, req, res, obj, payload) {
   }
   console.log('\nresponse status: ' + res.statusCode);
   console.log('response body: ' + JSON.stringify(obj, null, 2) +'\n\n');
-  assert.ifError(e);
+  //assert.ifError(e);
 }
 
 
@@ -90,9 +90,9 @@ function retrieveAllJobs() {
 
 function retrieveOneJob(ctx) {
   var deferredPromise = q.defer();
-  console.log('===========================================\nRetrieve Jobs');
+  console.log('===========================================\nRetrieve one Job: ' +ctx.jobid);
   mClient.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
-    //logTransaction(e, httpReq, httpResp, obj);
+    logTransaction(e, httpReq, httpResp, obj);
     deferredPromise.resolve({
       state: {job:0, stage:'retrieve', jobid:ctx.jobid},
       model: {jobs:obj.entities}
@@ -155,7 +155,7 @@ function retrieveSequencesForEachJob(ctx) {
       encodeURIComponent(query);
 
     mClient.get(url, function(e, httpReq, httpResp, obj) {
-      //logTransaction(e, httpReq, httpResp, obj);
+      logTransaction(e, httpReq, httpResp, obj);
       j.sequences = obj.entities;
       context.state.currentSequence = 0;
       deferred.resolve(context);
@@ -181,14 +181,19 @@ function resolveNumeric(input) {
     I = 1;
   }
   else if (typeof input == "string") {
-    I = eval('(' + input + ')');
+    try {
+      I = eval('(' + input + ')');
+    }
+    catch (exc1) {
+      I = 0;
+    }
   }
   return I;
 }
 
 function evalTemplate(ctx, code) {
   var src = '(function (', c = 0, f, values = [], result,
-      extractContext = ctx.state.extracts[ctx.state.job];
+      extractContext = ctx.state.extracts;
   for (var prop in extractContext) {
 
     if (extractContext.hasOwnProperty(prop)) {
@@ -199,10 +204,15 @@ function evalTemplate(ctx, code) {
     }
   }
   src += '){return ' + code + ';})';
-  //console.log('evaluating: ' + src);
-  f = eval(src);
-  result = f.apply(null, values);
-  //console.log('result: ' + result);
+  try {
+    //console.log('evaluating: ' + src);
+    f = eval(src);
+    result = f.apply(null, values);
+    //console.log('result: ' + result);
+  }
+  catch (exc1) {
+    r = null;
+  }
   return result;
 }
 
@@ -258,22 +268,20 @@ function expandEmbeddedTemplates(ctx, obj) {
 
 // ==================================================================
 
-function oneRequest(context) {
+function invokeOneRequest(context) {
   var re = new RegExp('(.*){(.+)}(.*)'),
       deferred = q.defer(),
       model = context.model,
       state = context.state,
       sequence = model.jobs[state.job].sequences[state.sequence],
       job = model.jobs[state.job],
-      reqImpl = sequence.requestImpls[state.request],
-      rr = sequence.requestImpls[state.request].requestRef,
-      r = sequence.requests.filter(getUuidFinder(rr))[0],
-      suffix = r.pathSuffix,
-      match = re.exec(r.pathSuffix),
+      req = sequence.requests[state.request],
+      suffix = req.pathSuffix,
+      match = re.exec(req.pathSuffix),
       actualPayload,
       client, p = q.resolve(context);
 
-  console.log('=================== oneRequest');
+  console.log('=================== invokeOneRequest');
 
   if (state.job === 0 && state.request === 0 &&
       state.sequence === 0 && state.iteration === 0) {
@@ -287,9 +295,9 @@ function oneRequest(context) {
   }
   client = state.restClient;
 
-  if (reqImpl.delayBefore) {
+  if (req.delayBefore) {
     p = p.then(function(ctx){
-      sleep.usleep(reqImpl.delayBefore * 1000);
+      sleep.usleep(req.delayBefore * 1000);
       return ctx;
     });
   }
@@ -304,7 +312,7 @@ function oneRequest(context) {
   }
 
   // inject custom headers...
-  if (r.headers) {
+  if (req.headers) {
     // set a new headerInjector for our purpose
     //console.log('r[' + r.uuid + '] HAVE HEADERS');
 
@@ -313,14 +321,14 @@ function oneRequest(context) {
         // The header is still mutable using the setHeader(name, value),
         // getHeader(name), removeHeader(name)
         var match, value;
-        for (var hdr in r.headers) {
-          if (r.headers.hasOwnProperty(hdr)) {
-            match = re.exec(r.headers[hdr]);
+        for (var hdr in req.headers) {
+          if (req.headers.hasOwnProperty(hdr)) {
+            match = re.exec(req.headers[hdr]);
             if (match) {
               value = match[1] + evalTemplate(ctx, match[2]) + match[3];
             }
             else {
-              value = r.headers[hdr];
+              value = req.headers[hdr];
             }
             //console.log('setHeader(' + hdr + ',' + value + ')');
             clientRequest.setHeader(hdr, value);
@@ -333,22 +341,28 @@ function oneRequest(context) {
 
   p = p.then(function(ctx) {
     var deferredPromise = q.defer(),
+        method = req.method.toLowerCase(),
         respHandler = function(e, httpReq, httpResp, obj) {
           var i, L, ex;
-          //assert.ifError(e);
           logTransaction(e, httpReq, httpResp, obj);
-          // do any extraction required for the request
-          if (reqImpl.responseExtracts && reqImpl.responseExtracts.length>0) {
-            if ( ! ctx.state.extracts) { ctx.state.extracts = []; }
-            if( ! ctx.state.extracts[state.job]) { ctx.state.extracts[state.job] = {}; }
-            for (i=0, L=reqImpl.responseExtracts.length; i<L; i++) {
-              ex = reqImpl.responseExtracts[i];
+          // perform any extraction required for the request
+          if (req.extracts && req.extracts.length>0) {
+            // cache the extract functions
+            //if ( ! ctx.state.extracts) { ctx.state.extracts = {}; }
+            for (i=0, L=req.extracts.length; i<L; i++) {
+              ex = req.extracts[i];
               if ( ! ex.compiledFn) {
                 console.log('eval: ' + ex.fn);
                 ex.compiledFn = eval('(' + ex.fn + ')');
               }
               console.log(ex.description);
-              ctx.state.extracts[state.job][ex.valueRef] = ex.compiledFn(obj);
+              // actually invoke the compiled fn
+              try {
+                ctx.state.extracts[ex.valueRef] = ex.compiledFn(obj);
+              }
+              catch (exc1) {
+                ctx.state.extracts[ex.valueRef] = null;
+              }
               // console.log('extractContext: ' +
               //             JSON.stringify(ctx.state.extracts[state.job], null, 2));
             }
@@ -360,17 +374,17 @@ function oneRequest(context) {
           deferredPromise.resolve(ctx);
         };
 
-    if (r.method.toLowerCase() === "post") {
+    if (method === "post") {
       console.log('post ' + suffix);
-      actualPayload = expandEmbeddedTemplates(ctx, r.payload);
+      actualPayload = expandEmbeddedTemplates(ctx, req.payload);
       client.post(suffix, actualPayload, respHandler);
     }
-    else if (r.method.toLowerCase() === "put") {
+    else if (method === "put") {
       console.log('put ' + suffix);
-      actualPayload = expandEmbeddedTemplates(ctx, r.payload);
+      actualPayload = expandEmbeddedTemplates(ctx, req.payload);
       client.put(suffix, actualPayload, respHandler);
     }
-    else if (r.method.toLowerCase() === "get") {
+    else if (method === "get") {
       console.log('get ' + suffix);
       client.get(suffix, respHandler);
     }
@@ -407,17 +421,17 @@ function runJob(context) {
     state.iteration = 0;
     state.sequence++;
     console.log('+++++++ next Sequence');
-    return q.resolve(context).then(runJob);
+    return q.resolve(context).then(runJob, trackFailure);
   }
   if (state.sequence === state.S) {
     // terminate
     state.sequence = 0;
-    return q.resolve(context);
+    return q.resolve(context).then(setWakeup);
   }
   else {
     // reset counts and fall through
     state.S = job.sequences.length;
-    state.R = job.sequences[state.sequence].requestImpls.length;
+    state.R = job.sequences[state.sequence].requests.length;
     if ( ! state.I[state.sequence]) {
       state.I[state.sequence] = resolveNumeric(job.sequences[state.sequence].iterations);
     }
@@ -427,7 +441,7 @@ function runJob(context) {
   }
 
   // if we arrive here we're doing a request, implies an async call
-  p = q.resolve(context).then(oneRequest);
+  p = q.resolve(context).then(invokeOneRequest);
 
   // sleep if necessary
   sequence = job.sequences[state.sequence];
@@ -439,7 +453,7 @@ function runJob(context) {
       });
     }
   }
-  return p.then(setWakeup, trackFailure);
+  return p.then(runJob);
 }
 
 
@@ -451,9 +465,10 @@ function initializeJobRunAndKickoff(context) {
     sequence : 0,
     S : context.model.jobs[0].sequences.length,
     request : 0,
-    R : context.model.jobs[0].sequences[0].requestImpls.length,
+    R : context.model.jobs[0].sequences[0].requests.length,
     iteration : 0,
-    I : []
+    I : [],
+    extracts: context.initialExtractContext
   };
 
   return q.resolve(context)
@@ -462,12 +477,18 @@ function initializeJobRunAndKickoff(context) {
 
 
 function setWakeup(context) {
-  var jobid = context.model.jobs[0].uuid;
+  var jobid = context.model.jobs[0].uuid,
+      initialExContext = context.initialExtractContext;
+  console.log('setWakeup ' + (new Date()).toString());
   activeJobs[jobid] =
     setTimeout(function () {
       q.resolve({jobid:jobid})
         .then(retrieveOneJob)
         .then(retrieveSequencesForEachJob)
+        .then(function(ctx) {
+          ctx.initialExtractContext = initialExContext;
+          return ctx;
+        })
         .then(initializeJobRunAndKickoff);
     }, sleepTimeInMs);
   return context;
@@ -476,96 +497,114 @@ function setWakeup(context) {
 
 // ******************************************************************
 
-server.use(restify.bodyParser({ mapParams: false })); // put post payload  in req.body
+server.use(restify.bodyParser({ mapParams: false })); // put post payload in req.body
 server.use(restify.queryParser());
 
-server.post(new RegExp('^/(jobs|sequences|requests)$'), function(req, res, next) {
-  // TODO: implement this
-  res.send(201, {
-    collection: req.params[0],
-    id: Math.random().toString(36).substr(3, 8)
-  });
-  return next();
-});
+// server.post(new RegExp('^/(jobs|sequences|requests)$'), function(req, res, next) {
+//   // TODO: implement creation of new items
+//   res.send(201, {
+//     collection: req.params[0],
+//     id: Math.random().toString(36).substr(3, 8)
+//   });
+//   return next();
+// });
+//
+// server.get(new RegExp('^/(jobs|sequences|requests)$'), function(req, res, next) {
+//   if (req.params[0] === 'jobs') {
+//     q
+//       .fcall(retrieveAllJobs)
+//       .then(retrieveSequencesForEachJob)
+//       .then(function(ctx) {
+//         res.send(ctx.model.jobs);
+//         next();
+//         return true;
+//       })
+//       .done();
+//   }
+//   else {
+//     mClient.get(modelSourceUrlPrefix + '/' + req.params[0], function(e, httpReq, httpResp, obj) {
+//       //logTransaction(e, httpReq, httpResp, obj);
+//       res.send(obj.entities);
+//       return next();
+//     });
+//   }
+// });
+//
+// server.get(new RegExp('^/(jobs)/([^/]+)$'), function(req, res, next) {
+//   var match = reUuid.exec(req.params[1]);
+//   if (match) {
+//     console.log('get job, job id: ' + req.params[1]);
+//     q.resolve({jobid:req.params[1]})
+//       .then(retrieveOneJob)
+//       .then(retrieveSequencesForEachJob)
+//       .then(function(ctx) {
+//         res.send(ctx.model.jobs[0]);
+//         next();
+//         return true;
+//       })
+//       .done();
+//   }
+//   else {
+//     res.send(400, {msg:'malformed uuid'});
+//     return next();
+//   }
+// });
 
-server.get(new RegExp('^/(jobs|sequences|requests)$'), function(req, res, next) {
-  if (req.params[0] === 'jobs') {
-    q
-      .fcall(retrieveAllJobs)
-      .then(retrieveSequencesForEachJob)
-      .then(function(ctx) {
-        res.send(ctx.model.jobs);
-        next();
-        return true;
-      })
-      .done();
-  }
-  else {
-    mClient.get(modelSourceUrlPrefix + '/' + req.params[0], function(e, httpReq, httpResp, obj) {
-      //logTransaction(e, httpReq, httpResp, obj);
-      res.send(obj.entities);
-      return next();
-    });
-  }
-});
-
-server.get(new RegExp('^/(jobs)/([^/]+)$'), function(req, res, next) {
-  var match = reUuid.exec(req.params[1]);
-  if (match) {
-    console.log('found job id: ' + req.params[1]);
-    q.resolve({jobid:req.params[1]})
-      .then(retrieveOneJob)
-      .then(retrieveSequencesForEachJob)
-      .then(function(ctx) {
-        res.send(ctx.model.jobs[0]);
-        next();
-        return true;
-      })
-      .done();
-  }
-  else {
-    res.send(400, {msg:'malformed uuid'});
-    return next();
-  }
-});
-
-server.post( //new RegExp('^/jobs/([-a-zA-Z0-9]{28})\\?action=(start|stop)$'),
-             new RegExp('^/jobs/(3afd26ea-f082-11e2-9a79-c187aac18778)$'),
+server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
             function(req, res, next) {
-              var uuid = req.params[0],
-                  match = reUuid.exec(uuid),
-                  action = req.params[1],
+              var jobid = req.params.jobid,
+                  match = reUuid.exec(jobid),
+                  action = req.params.action,
                   timeoutId;
-              console.log("am i talkin here?");
-              console.log(req.body); // \\?action=(start|stop)
+              // console.log('params: ' + JSON.stringify(req.params, null, 2));
+              // console.log('body: ' + JSON.stringify(req.body, null, 2));
 
               if (match) {
                 if (action == 'start') {
-                  q.resolve({jobid:req.params[0]})
+                  if ( ! activeJobs.hasOwnProperty(jobid)) {
+                  q.resolve({jobid:jobid})
                     .then(retrieveOneJob)
                     .then(retrieveSequencesForEachJob)
+                    .then(function(ctx) {
+                      ctx.initialExtractContext = req.body;
+                      return ctx;
+                    })
                     .then(initializeJobRunAndKickoff)
                     .then(function(ctx) {
-                      res.send({"message":"ok"});
-                      next();
                       return true;
                     })
                     .done();
+
+                    // this response gets sent while the job is running
+                    res.send({"message":"ok"});
+                    next();
+                  }
+                  else {
+                    res.send(400, {"message":"that job is already  running"});
+                    return next();
+                  }
                 }
-                else if (activeJobs.hasOwnProperty(uuid)) {
-                  timeoutId = activeJobs[uuid];
-                  clearTimeout(timeoutId);
-                  delete activeJobs[uuid];
-                  res.send({"message":"ok"});
-                  return next();
+                else if (action == 'stop') {
+                  if (activeJobs.hasOwnProperty(jobid)) {
+                    timeoutId = activeJobs[jobid];
+                    clearTimeout(timeoutId);
+                    delete activeJobs[jobid];
+                    console.log('stop job ' + jobid);
+                    res.send({"message":"ok"});
+                    return next();
+                  }
+                  else {
+                    res.send(400, {"message":"that job is not currently running"});
+                    return next();
+                  }
                 }
                 else {
-                  res.send(400, {"message":"that job is not currently running"});
+                  res.send(400, {msg:'invalid action'});
                   return next();
                 }
               }
               else {
-                res.send(400, {msg:'malformed uuid'});
+                res.send(400, {msg:'malformed jobid'});
                 return next();
               }
             });

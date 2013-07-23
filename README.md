@@ -55,16 +55,16 @@ optionally a payload for the request.
 
 For example:
 
-* `GET /{entity-collection}`  
+* `GET /{entity-collection}`
     Get the list of defined entities of the given type. The collection
     should be one of {jobs, sequences, requests, lprofile}
 
-* `POST /{entity-collection}`  
+* `POST /{entity-collection}`
     create a new entity, given the posted entity definition.
 
-* `GET /{entity-collection}/{entity-id}`  
+* `GET /{entity-collection}/{entity-id}`
 
-* `PUT /{entity-collection}/{entity-id}`  
+* `PUT /{entity-collection}/{entity-id}`
    partial put to update an entity definition.
 
 
@@ -80,11 +80,22 @@ Job Control
 
 In addition to the data access APIs shown above, there are a few job control APIs:
 
-* `POST /jobs/{job-id}?action=start`  
-   begin running the job. The job runs "forever".
+* `POST /jobs/{job-id}?action=start`
+   begin running the job. The job runs "forever".  The payload should be a
+   application/json containing the initial context for the job.
+   Example:
 
-* `POST /jobs/{job-id}?action=stop`  
+    curl -i -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"
+        -H "Content-Type: application/json"
+        -d '{"username":"Larry", "password" : "HopefulPressue"}'
+
+   Then, request headers and payload can reference these values as with {username} or {password}.
+
+
+
+* `POST /jobs/{job-id}?action=stop`
    stop running the job.
+
 
 
 
@@ -99,14 +110,14 @@ app doesn't really do job control just yet. I'm getting there.
 Interesting Files
 ----------------------
 
-* `retrieve1.js`  
+* `retrieve1.js`
 a Nodejs program intended for use from the command line. It shows how to retrieve the "job model" from App Services
 
 
-* `run3.js`  
+* `run3.js`
 another nodejs command-line tool, shows how to retrieve the all the stored jobs, and then run each one.
 
-* `server3.js`  
+* `server3.js`
 a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs, sequences, and requests under management.
 
 
