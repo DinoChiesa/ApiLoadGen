@@ -85,7 +85,7 @@ And then add requests, like this:
       "payload": {
         "grant_type": "password",
         "username": "Himself",
-        "password": "JournalisticGrievances"
+        "password": "HappinessPervades"
       }
     }
 
