@@ -3,11 +3,11 @@ Creating a Job
 
 The resource model is 
 
-/jobs/{job-id}
-/jobs/{job-id}/includes/ 
-/jobs/{job-id}/includes/{sequence-id}
-/jobs/{job-id}/includes/{sequence-id}/references
-/jobs/{job-id}/includes/{sequence-id}/references/{request-id}
+    /jobs/{job-id}
+    /jobs/{job-id}/includes/ 
+    /jobs/{job-id}/includes/{sequence-id}
+    /jobs/{job-id}/includes/{sequence-id}/references
+    /jobs/{job-id}/includes/{sequence-id}/references/{request-id}
 
 
 To fully create a complete job definition you must: 
