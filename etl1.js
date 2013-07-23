@@ -8,7 +8,7 @@
 // This needs to be run only once.
 //
 // created: Thu Jul 18 15:54:12 2013
-// last saved: <2013-July-21 11:31:27>
+// last saved: <2013-July-23 11:47:26>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -23,6 +23,7 @@ var assert = require('assert'),
     filename = "model.json",
     model = JSON.parse(fs.readFileSync(filename, "utf8")),
     newJob, newSequence, newRequest, requestHash,
+    requestRefs, 
     promise, urlPath1, urlPath2,
     s, r, findFn, selection,
     urlPathPrefix = '/dino/loadgen1',
@@ -120,47 +121,50 @@ promise = q.fcall(function(){})
 
 
 // process each sequence in order
+
 for (i=0, L=model.sequences.length; i<L; i++) {
   s = model.sequences[i];
+  requestRefs = s.requestRefs;
+  delete s.requestRefs;
 
   promise = promise.then(promisifySequence(s));
 
-  for (j=0; j < s.requestImpls.length; j++) {
-    r = s.requestImpls[j];
-    findFn = getUuidFinder(r.requestRef);
+  for (j=0; j < requestRefs.length; j++) {
+    r = requestRefs[j];
+    findFn = getUuidFinder(r);
     selection = model.requests.filter(findFn);
     promise = promise.then(promisifyRequest(selection[0]));
   }
 
-  promise = promise
-    .then(function() {
-      var i, L1, prop, ri, wrapper,
-          deferredPromise = q.defer();
-      console.log('=============================================\nupdate request references');
-      console.log('requestHash: ' + JSON.stringify(requestHash, null, 2));
-      console.log('requestImpls (BEFORE): ' + JSON.stringify(newSequence.requestImpls, null, 2));
-      // fixup references?...
-      for (i=0, L1=newSequence.requestImpls.length; i<L1; i++) {
-        ri = newSequence.requestImpls[i];
-        for (prop in requestHash) {
-          if (requestHash.hasOwnProperty(prop)) {
-            // if old 'requestRef' points to old uuid, apply the new uuid
-            if (prop === ri.requestRef) {
-             ri.requestRef = requestHash[prop];
-            }
-          }
-        }
-      }
-      console.log('requestImpls (AFTER): ' + JSON.stringify(newSequence.requestImpls, null, 2));
-      wrapper = {requestImpls : newSequence.requestImpls};
-      client.put(urlPathPrefix + '/sequences/' + newSequence.uuid, wrapper,
-                 function (e, httpReq, httpResp, obj) {
-                   logRequest(e, httpReq, httpResp, obj);
-                   requestHash = {}; // reset for next loop
-                   deferredPromise.resolve(true);
-                 });
-      return deferredPromise.promise;
-    });
+  // promise = promise
+  //   .then(function() {
+  //     var i, L1, prop, ri, wrapper,
+  //         deferredPromise = q.defer();
+  //     console.log('=============================================\nupdate request references');
+  //     console.log('requestHash: ' + JSON.stringify(requestHash, null, 2));
+  //     console.log('requestImpls (BEFORE): ' + JSON.stringify(newSequence.requestImpls, null, 2));
+  //     // fixup references?...
+  //     for (i=0, L1=newSequence.requestImpls.length; i<L1; i++) {
+  //       ri = newSequence.requestImpls[i];
+  //       for (prop in requestHash) {
+  //         if (requestHash.hasOwnProperty(prop)) {
+  //           // if old 'requestRef' points to old uuid, apply the new uuid
+  //           if (prop === ri.requestRef) {
+  //            ri.requestRef = requestHash[prop];
+  //           }
+  //         }
+  //       }
+  //     }
+  //     console.log('requestImpls (AFTER): ' + JSON.stringify(newSequence.requestImpls, null, 2));
+  //     wrapper = {requestImpls : newSequence.requestImpls};
+  //     client.put(urlPathPrefix + '/sequences/' + newSequence.uuid, wrapper,
+  //                function (e, httpReq, httpResp, obj) {
+  //                  logRequest(e, httpReq, httpResp, obj);
+  //                  requestHash = {}; // reset for next loop
+  //                  deferredPromise.resolve(true);
+  //                });
+  //     return deferredPromise.promise;
+  //   });
 }
 
 
