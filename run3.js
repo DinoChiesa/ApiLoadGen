@@ -16,7 +16,7 @@
 //   npm install restify sleep q
 //
 // created: Wed Jul 17 18:42:20 2013
-// last saved: <2013-July-22 09:44:59>
+// last saved: <2013-July-23 12:33:43>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa and Apigee Corp
@@ -266,7 +266,7 @@ function initializeRunStateAndKickoff(context) {
     sequence : 0,
     S : context.model.jobs[0].sequences.length,
     request : 0,
-    R : context.model.jobs[0].sequences[0].requestImpls.length,
+    R : context.model.jobs[0].sequences[0].requests.length,
     iteration : 0,
     I : [] // resolveNumeric(context.model.jobs[0].sequences[0].iterations)
   };
@@ -276,22 +276,20 @@ function initializeRunStateAndKickoff(context) {
 }
 
 
-function oneRequest(context) {
+function invokeOneRequest(context) {
   var re = new RegExp('(.*){(.+)}(.*)'),
       deferred = q.defer(),
       model = context.model,
       state = context.state,
       sequence = model.jobs[state.job].sequences[state.sequence],
       job = model.jobs[state.job],
-      reqImpl = sequence.requestImpls[state.request],
-      rr = sequence.requestImpls[state.request].requestRef,
-      r = sequence.requests.filter(getUuidFinder(rr))[0],
-      suffix = r.pathSuffix,
-      match = re.exec(r.pathSuffix),
+      req = sequence.requests[state.request],
+      suffix = req.pathSuffix,
+      match = re.exec(req.pathSuffix),
       actualPayload,
       client, p = q.resolve(context);
 
-  console.log('=================== oneRequest');
+  console.log('=================== invokeOneRequest');
 
   if (state.job === 0 && state.request === 0 &&
       state.sequence === 0 && state.iteration === 0) {
@@ -305,9 +303,9 @@ function oneRequest(context) {
   }
   client = state.restClient;
 
-  if (reqImpl.delayBefore) {
+  if (req.delayBefore) {
     p = p.then(function(ctx){
-      sleep.usleep(reqImpl.delayBefore * 1000);
+      sleep.usleep(req.delayBefore * 1000);
       return ctx;
     });
   }
@@ -322,7 +320,7 @@ function oneRequest(context) {
   }
 
   // inject custom headers...
-  if (r.headers) {
+  if (req.headers) {
     // set a new headerInjector for our purpose
     //console.log('r[' + r.uuid + '] HAVE HEADERS');
 
@@ -331,14 +329,14 @@ function oneRequest(context) {
         // The header is still mutable using the setHeader(name, value),
         // getHeader(name), removeHeader(name)
         var match, value;
-        for (var hdr in r.headers) {
-          if (r.headers.hasOwnProperty(hdr)) {
-            match = re.exec(r.headers[hdr]);
+        for (var hdr in req.headers) {
+          if (req.headers.hasOwnProperty(hdr)) {
+            match = re.exec(req.headers[hdr]);
             if (match) {
               value = match[1] + evalTemplate(ctx, match[2]) + match[3];
             }
             else {
-              value = r.headers[hdr];
+              value = req.headers[hdr];
             }
             //console.log('setHeader(' + hdr + ',' + value + ')');
             clientRequest.setHeader(hdr, value);
@@ -355,12 +353,13 @@ function oneRequest(context) {
           var i, L, ex;
           //assert.ifError(e);
           logTransaction(e, httpReq, httpResp, obj);
-          // do any extraction required for the request
-          if (reqImpl.responseExtracts && reqImpl.responseExtracts.length>0) {
+          // perform any extraction required for the request
+          if (req.extracts && req.extracts.length>0) {
+            // cache the extract functions
             if ( ! ctx.state.extracts) { ctx.state.extracts = []; }
             if( ! ctx.state.extracts[state.job]) { ctx.state.extracts[state.job] = {}; }
-            for (i=0, L=reqImpl.responseExtracts.length; i<L; i++) {
-              ex = reqImpl.responseExtracts[i];
+            for (i=0, L=req.extracts.length; i<L; i++) {
+              ex = req.extracts[i];
               if ( ! ex.compiledFn) {
                 console.log('eval: ' + ex.fn);
                 ex.compiledFn = eval('(' + ex.fn + ')');
@@ -378,22 +377,22 @@ function oneRequest(context) {
           deferredPromise.resolve(ctx);
         };
 
-    if (r.method.toLowerCase() === "post") {
+    if (req.method.toLowerCase() === "post") {
       console.log('post ' + suffix);
-      actualPayload = expandEmbeddedTemplates(ctx, r.payload);
+      actualPayload = expandEmbeddedTemplates(ctx, req.payload);
       client.post(suffix, actualPayload, respHandler);
     }
-    else if (r.method.toLowerCase() === "put") {
+    else if (req.method.toLowerCase() === "put") {
       console.log('put ' + suffix);
-      actualPayload = expandEmbeddedTemplates(ctx, r.payload);
+      actualPayload = expandEmbeddedTemplates(ctx, req.payload);
       client.put(suffix, actualPayload, respHandler);
     }
-    else if (r.method.toLowerCase() === "get") {
+    else if (req.method.toLowerCase() === "get") {
       console.log('get ' + suffix);
       client.get(suffix, respHandler);
     }
     else {
-      assert.fail(r.method,"get|post|put", "unsupported method", "<>");
+      assert.fail(req.method,"get|post|put", "unsupported method", "<>");
     }
     return deferredPromise.promise;
   });
@@ -441,7 +440,7 @@ function runJobs(context) {
   else {
     // reset counts and fall through
     state.S = model.jobs[state.job].sequences.length;
-    state.R = model.jobs[state.job].sequences[state.sequence].requestImpls.length;
+    state.R = model.jobs[state.job].sequences[state.sequence].requests.length;
     if ( ! state.I[state.sequence]) {
       state.I[state.sequence] = resolveNumeric(model.jobs[state.job].sequences[state.sequence].iterations);
     }
@@ -453,7 +452,7 @@ function runJobs(context) {
 
   // if we arrive here we're doing a request, implies an async call
   p = q.resolve(context)
-    .then(oneRequest);
+    .then(invokeOneRequest);
 
   // sleep if necessary
   sequence = model.jobs[state.job].sequences[state.sequence];
@@ -479,6 +478,7 @@ function setWakeup(context) {
   // set context for waiting
   context.state.state = 'wait';
   globalContext = context;
+  console.log((new Date()).toString());
   console.log('sleeping...');
   setTimeout(function () {
        q.resolve(globalContext)

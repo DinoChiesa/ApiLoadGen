@@ -1,27 +1,26 @@
 Creating a Job
 ==========
 
-The resource model is 
+The resource model is
 
     /jobs/{job-id}
-    /jobs/{job-id}/includes/ 
+    /jobs/{job-id}/includes/
     /jobs/{job-id}/includes/{sequence-id}
     /jobs/{job-id}/includes/{sequence-id}/references
     /jobs/{job-id}/includes/{sequence-id}/references/{request-id}
 
 
-To fully create a complete job definition you must: 
+To fully create a complete job definition you must:
   - create the basic job
   - add sequences to the job
   - add requests to each sequence
-  - fixup the request references
 
-This last step is sort of a wart on the data model and one I think I need to fix. For now, this is how it works. 
 
-In more detail: 
+
+In more detail:
 ----------------------
 
-Create a job like this: 
+Create a job like this:
 
 `POST /jobs`
 
@@ -39,10 +38,10 @@ with this as a payload
       "description": "Whatever you like here"
     }
 
-In the response you will get back a uuid. This identifies the job.  
+In the response you will get back a uuid. This identifies the job.
 
 
-Add Sequences to a job like this: 
+Add Sequences to a job like this:
 
 `POST /jobs/{job-id}/includes`
 
@@ -52,25 +51,11 @@ with this as a payload
       "type": "sequence",
       "name": "seqLogin",
       "description": "login",
-      "iterations": "1",
-      "requestImpls": [
-        {
-          "requestRef": "fill in later"
-          "delayBefore": "0",
-          "responseExtracts": [
-            {
-              "description": "extract the access token",
-              "fn": "function(obj) {return obj.access_token;}",
-              "valueRef": "oauth_bearer_token"
-            }
-          ]
-        }
-      ]
+      "iterations": "1"
     }
 
-
-Add 1 or more sequences. 
-And then add requests, like this:
+Add 1 or more sequences, and you get a sequence id for each one.
+Then add 1 or more requests to each sequence, like this:
 
 `POST /jobs/{job-id}/includes/{sequence-id}/references`
 
@@ -86,24 +71,17 @@ And then add requests, like this:
         "grant_type": "password",
         "username": "Himself",
         "password": "HappinessPervades"
-      }
+      },
+      "delayBefore": "0",
+      "extracts": [
+        {
+          "description": "extract the access token",
+          "fn": "function(obj) {return obj.access_token;}",
+          "valueRef": "oauth_bearer_token"
+        }
+      ]
     }
 
+The "extracts" property defines a post-request step that can extract information from the payload or response headers. The fn property of that object should be the text source of a compilable JavaScript function. The valueRef contains the name of the reference variable to hold the extracted value.
 
-You then get a request id in response. At this point you need to fixup the reference in the requestImpl field of the sequence, with a partial PUT update. 
-
-`PUT /jobs/{job-id}/includes/{sequence-id}`
-
-with this payload: 
-
-      "requestImpls": [
-        {
-          "requestRef": "{request-id}"
-        }
-       ]
-
-
-
-
-
-
+This then can be referenced later in replacement templates for inputs to subsequent requests.
