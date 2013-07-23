@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-23 15:17:38>
+// last saved: <2013-July-23 16:09:18>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -43,7 +43,7 @@ var restify = require('restify'),
       name: 'my_restify_application'
     }),
     activeJobs = {},
-    sleepTimeInMs = 5 * 60 * 1000, // not really - this discounts runtime
+    fiveMinutesInMs = 5 * 60 * 1000,
     modelSourceUrlPrefix = '/dino/loadgen1',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
     reUuid = new RegExp(reUuidStr),
@@ -69,7 +69,9 @@ function logTransaction(e, req, res, obj, payload) {
   if (payload) {
     console.log('payload: ' + JSON.stringify(payload, null, 2));
   }
-  console.log('\nresponse status: ' + res.statusCode);
+  if (res && res.statusCode) {
+    console.log('\nresponse status: ' + res.statusCode);
+  }
   console.log('response body: ' + JSON.stringify(obj, null, 2) +'\n\n');
   //assert.ifError(e);
 }
@@ -468,7 +470,8 @@ function initializeJobRunAndKickoff(context) {
     R : context.model.jobs[0].sequences[0].requests.length,
     iteration : 0,
     I : [],
-    extracts: context.initialExtractContext
+    extracts: context.initialExtractContext,
+    start : (new Date()).valueOf()
   };
 
   return q.resolve(context)
@@ -478,15 +481,22 @@ function initializeJobRunAndKickoff(context) {
 
 function setWakeup(context) {
   var jobid = context.model.jobs[0].uuid,
-      initialExContext = context.initialExtractContext;
-  console.log('setWakeup ' + (new Date()).toString());
+      initialExContext = context.initialExtractContext,
+      fiveMinutesAfterPriorStart = context.start + fiveMinutesInMs,
+      currentTime = (new Date()).valueOf(),
+      sleepTimeInMs = fiveMinutesAfterPriorStart - currentTime;
+  // validate the sleep time
+  if (sleepTimeInMs < 30000) { sleepTimeInMs = 30000; }
+  console.log('setWakeup in ' + sleepTimeInMs + 'ms, starting at '+ (new Date()).toString());
   activeJobs[jobid] =
     setTimeout(function () {
+      var startMoment = new Date().valueOf();
       q.resolve({jobid:jobid})
         .then(retrieveOneJob)
         .then(retrieveSequencesForEachJob)
         .then(function(ctx) {
           ctx.initialExtractContext = initialExContext;
+          ctx.start = startMoment;
           return ctx;
         })
         .then(initializeJobRunAndKickoff);
