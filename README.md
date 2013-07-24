@@ -23,6 +23,26 @@ is managed by the Apigee API Manager, it allows the Apigee Analytics
 charts to present interesting-looking data.
 
 
+Status
+----------------------
+
+This is currently a proof of concept. It's getting there.
+
+
+Interesting Files
+----------------------
+
+* `retrieve1.js`  
+a Nodejs program intended for use from the command line. It shows how to retrieve the "job model" from App Services
+
+
+* `run3.js`  
+another nodejs command-line tool, shows how to retrieve the all the stored jobs, and then run each one.
+
+* `server3.js`  
+a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs, sequences, and requests under management.
+
+
 Data Model
 ----------------------
 
@@ -55,16 +75,16 @@ optionally a payload for the request.
 
 For example:
 
-* `GET /{entity-collection}`
+* `GET /{entity-collection}`  
     Get the list of defined entities of the given type. The collection
     should be one of {jobs, sequences, requests, lprofile}
 
-* `POST /{entity-collection}`
+* `POST /{entity-collection}`  
     create a new entity, given the posted entity definition.
 
-* `GET /{entity-collection}/{entity-id}`
+* `GET /{entity-collection}/{entity-id}`  
 
-* `PUT /{entity-collection}/{entity-id}`
+* `PUT /{entity-collection}/{entity-id}`  
    partial put to update an entity definition.
 
 
@@ -80,8 +100,8 @@ Job Control
 
 In addition to the data access APIs shown above, there are a few job control APIs:
 
-* `POST /jobs/{job-id}?action=start`
-   begin running the job. The job runs "forever".  The payload should be a
+* `POST /jobs/{job-id}?action=start`  
+   to begin running the job. The job runs "forever".  The payload should be a
    application/json containing the initial context for the job.
    Example:
 
@@ -93,34 +113,139 @@ In addition to the data access APIs shown above, there are a few job control API
 
 
 
-* `POST /jobs/{job-id}?action=stop`
-   stop running the job.
+* `POST /jobs/{job-id}?action=stop`  
+   to stop running the job.
 
 
 
 
-Status
+Creating a Job
 ----------------------
 
-This is currently a proof of concept. The nodejs server
-app doesn't really do job control just yet. I'm getting there.
+The resource model is
+
+    /jobs/{job-id}
+    /jobs/{job-id}/includes/
+    /jobs/{job-id}/includes/{sequence-id}
+    /jobs/{job-id}/includes/{sequence-id}/references
+    /jobs/{job-id}/includes/{sequence-id}/references/{request-id}
+
+
+To fully create a complete job definition you must:
+  - create the basic job
+  - add sequences to the job
+  - add requests to each sequence
 
 
 
-Interesting Files
+In more detail:
 ----------------------
 
-* `retrieve1.js`
-a Nodejs program intended for use from the command line. It shows how to retrieve the "job model" from App Services
+Create a job like this:
+
+`POST /jobs`
+
+with this as a payload
+
+    {
+      "type": "job",
+      "defaultProperties": {
+        "scheme": "https",
+        "host": "cheeso-test.apigee.net",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "description": "Whatever you like here"
+    }
+
+In the response you will get back a uuid. This identifies the job.
 
 
-* `run3.js`
-another nodejs command-line tool, shows how to retrieve the all the stored jobs, and then run each one.
+Add Sequences to a job like this:
 
-* `server3.js`
-a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs, sequences, and requests under management.
+`POST /jobs/{job-id}/includes/sequences`
+
+with this as a payload
+
+    {
+      "type": "sequence",
+      "name": "seqLogin",
+      "description": "login",
+      "iterations": "1"
+    }
+
+Add 1 or more sequences, and you get a sequence id for each one.
+Then add 1 or more requests to each sequence, like this:
+
+`POST /jobs/{job-id}/includes/{sequence-id}/references/requests`
+
+    {
+      "type": "request",
+      "name": "login",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "method": "post",
+      "pathSuffix": "/v1/todolist/token",
+      "payload": {
+        "grant_type": "password",
+        "username": "Himself",
+        "password": "HappinessPervades"
+      },
+      "delayBefore": "0",
+      "extracts": [
+        {
+          "description": "extract the access token",
+          "fn": "function(obj) {return obj.access_token;}",
+          "valueRef": "oauth_bearer_token"
+        }
+      ]
+    }
+
+The "extracts" property defines a post-request step that can extract information from the payload or response headers. The fn property of that object should be the text source of a compilable JavaScript function. The valueRef contains the name of the reference variable to hold the extracted value.
+
+This then can be referenced later in replacement templates for inputs to subsequent requests.  For example, a subsequent request could use this: 
+
+    {
+      "type" : "request",
+      "name" : "retrieveItems",
+      "pathSuffix" : "/v1/todolist/users/me/owns/items",
+      "method" : "get",
+      "headers" : {
+        "authorization" : "Bearer {oauth_bearer_token}"
+      }
+    }
+
+... and the resulting header sent in the outbound request would include the bearer token extracted from the previous "login" request. 
 
 
+If you want the load rate to vary over time, you need to add a load profile to
+the job. A load profile is very simply, a list of numbers specifying the target
+number of job runs per hour, for hours 0..24.
+
+Add a load profile to a job like this: 
+
+`POST /jobs/{job-id}/uses/loadprofiles`
+
+with something like this as a payload:
+
+    {
+      "type": "loadprofile",
+      "perHourCounts": [44, 35, 40, 36, 27, 40, 40, 54, 57, 62, 54, 61, 73, 70, 53, 50, 47, 62, 74, 88, 83, 77, 70, 51]
+    }
+
+
+The array called `perHourCounts` should be the number of times the job should
+run per hour, for each hour from 0 to 23. Be thoughtful about choosing these
+numbers. Jobs that have many requests may take a minute to run or more, in which
+case running 60 of those per hour is impractical. The way it works is, the
+server divides the time in an hour by the number of times to run the job. This
+give the interval on which to invoke one job.
+
+
+If you do not add a load profile to a job, the server defaults to running the
+job 12 times per hour.
 
 
 Notes
@@ -149,8 +274,5 @@ Bugs
 
 - DELETE is not yet supported as a request type in the requests that comprise a job
 - The settings for the job store are hardcoded to an open App Services app under my personal ccount.
-- The server implementation is incomplete; no job control yet.
-- The sleep time between jobs is not dependent upon the run time of a job or set of jobs. It should be.
 - There's no companion UI to create job definitions or inquire their status.  Should be done in angularJS!
-- Variable load generation is not implemented yet. In other words, there's no such thing as a load profile resource. Each job should be designated to run a given # of times per hour. Then the runner should divide that by 12 to get the number of runs every 5 minutes.
 - Currently no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.

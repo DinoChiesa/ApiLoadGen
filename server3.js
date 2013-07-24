@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-23 16:09:18>
+// last saved: <2013-July-24 00:14:45>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -43,6 +43,7 @@ var restify = require('restify'),
       name: 'my_restify_application'
     }),
     activeJobs = {},
+    oneHourInMs = 60 * 60 * 1000,
     fiveMinutesInMs = 5 * 60 * 1000,
     modelSourceUrlPrefix = '/dino/loadgen1',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
@@ -73,7 +74,6 @@ function logTransaction(e, req, res, obj, payload) {
     console.log('\nresponse status: ' + res.statusCode);
   }
   console.log('response body: ' + JSON.stringify(obj, null, 2) +'\n\n');
-  //assert.ifError(e);
 }
 
 
@@ -94,11 +94,19 @@ function retrieveOneJob(ctx) {
   var deferredPromise = q.defer();
   console.log('===========================================\nRetrieve one Job: ' +ctx.jobid);
   mClient.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
-    logTransaction(e, httpReq, httpResp, obj);
-    deferredPromise.resolve({
-      state: {job:0, stage:'retrieve', jobid:ctx.jobid},
-      model: {jobs:obj.entities}
-    });
+    //logTransaction(e, httpReq, httpResp, obj);
+    if (obj.entities && obj.entities[0]) {
+      deferredPromise.resolve({
+        state: {job:0, stage:'retrieve', jobid:ctx.jobid},
+        model: {jobs:obj.entities}
+      });
+    }
+    else {
+      deferredPromise.resolve({
+        state: {job:0, stage:'nojob', jobid:ctx.jobid},
+        model: {}
+      });
+    }
   });
   return deferredPromise.promise;
 }
@@ -133,8 +141,42 @@ function retrieveRequestsForOneSequence(ctx) {
   }(ctx));
 }
 
+function retrieveLoadProfileForJob(ctx) {
+  return (function (context) {
+    var deferred,
+        model = context.model,
+        jobs = model.jobs,
+        job = jobs ? jobs[0] : null,
+        query = "select * where type = 'loadprofile'",
+        url;
 
-function retrieveSequencesForEachJob(ctx) {
+    console.log('========================================\nretrieveLoadProfileForJob');
+
+    if ( ! job) {
+      return q.resolve(context);
+    }
+
+    deferred = q.defer();
+    url = modelSourceUrlPrefix +
+      job.metadata.connections.uses +
+      '?ql=' + encodeURIComponent(query);
+
+    mClient.get(url, function(e, httpReq, httpResp, obj) {
+      //logTransaction(e, httpReq, httpResp, obj);
+      if (obj.entities && obj.entities[0]) {
+        context.model.jobs[0].loadprofile = obj.entities[0].perHourCounts;
+      }
+      deferred.resolve(context);
+    });
+
+    return deferred.promise;
+
+  }(ctx));
+}
+
+
+
+function retrieveSequencesForJob(ctx) {
   return (function (context) {
     var deferred,
         query = "select * where type = 'sequence'",
@@ -144,17 +186,18 @@ function retrieveSequencesForEachJob(ctx) {
         j, url;
 
     // check for termination
-    if (state.job == model.jobs.length)
+    if ((typeof model.jobs == "undefined") || (state.job == model.jobs.length)) {
+      console.log("retrieveSequencesForJob: terminate");
       return q.resolve(context);
+    }
 
     deferred = q.defer();
-    console.log('========================================\nretrieveSequencesForEachJob');
+    console.log('========================================\nretrieveSequencesForJob');
     j = jobs[state.job];
 
     url = modelSourceUrlPrefix +
       j.metadata.connections.includes +
-      '?ql=' +
-      encodeURIComponent(query);
+      '?ql=' + encodeURIComponent(query);
 
     mClient.get(url, function(e, httpReq, httpResp, obj) {
       logTransaction(e, httpReq, httpResp, obj);
@@ -165,7 +208,7 @@ function retrieveSequencesForEachJob(ctx) {
 
     return deferred.promise
       .then(retrieveRequestsForOneSequence)
-      .then(retrieveSequencesForEachJob);
+      .then(retrieveSequencesForJob);
 
   }(ctx));
 }
@@ -460,9 +503,17 @@ function runJob(context) {
 
 
 function initializeJobRunAndKickoff(context) {
+  var now = (new Date()).valueOf();
   // initialize context for running
+  if ( ! context.model.jobs) {
+    console.log("-no job-");
+    context.state.sequence = 0;
+    context.state.start = now;
+    return q.resolve(context).then(setWakeup, trackFailure);
+  }
+
   context.state = {
-    state:'run',
+    state: 'run',
     job: 0,
     sequence : 0,
     S : context.model.jobs[0].sequences.length,
@@ -471,7 +522,7 @@ function initializeJobRunAndKickoff(context) {
     iteration : 0,
     I : [],
     extracts: context.initialExtractContext,
-    start : (new Date()).valueOf()
+    start : now
   };
 
   return q.resolve(context)
@@ -480,23 +531,48 @@ function initializeJobRunAndKickoff(context) {
 
 
 function setWakeup(context) {
-  var jobid = context.model.jobs[0].uuid,
+  var jobid,
       initialExContext = context.initialExtractContext,
-      fiveMinutesAfterPriorStart = context.start + fiveMinutesInMs,
+      currentHour = (new Date()).getHours(),
       currentTime = (new Date()).valueOf(),
-      sleepTimeInMs = fiveMinutesAfterPriorStart - currentTime;
-  // validate the sleep time
+      durationOfLastRun = ((new Date().valueOf()) - context.state.start),
+      requestsPerHour, sleepTimeInMs;
+
+  console.log('===========================================\nsetWakeup');
+
+  if (context.model.jobs && context.model.jobs[0]) {
+    jobid = context.model.jobs[0].uuid;
+  }
+  else if (context.state.uuid) {
+    jobid = context.state.uuid;
+  }
+  else jobid = "xxx";
+
+  // compute and validate the sleep time
+  if (currentHour < 0 || currentHour > 23) { currentHour = 0;}
+  requestsPerHour = (context.model.jobs &&
+                     context.model.jobs[0].loadprofile &&
+                     context.model.jobs[0].loadprofile[currentHour]) ?
+    context.model.jobs[0].loadprofile[currentHour] : 12; // default
+
+  sleepTimeInMs =
+    Math.floor(oneHourInMs / requestsPerHour) - durationOfLastRun;
+
   if (sleepTimeInMs < 30000) { sleepTimeInMs = 30000; }
+
+  console.log('doing ' + requestsPerHour + ' requests per hour');
   console.log('setWakeup in ' + sleepTimeInMs + 'ms, starting at '+ (new Date()).toString());
   activeJobs[jobid] =
     setTimeout(function () {
       var startMoment = new Date().valueOf();
       q.resolve({jobid:jobid})
         .then(retrieveOneJob)
-        .then(retrieveSequencesForEachJob)
+        .then(retrieveLoadProfileForJob)
+        .then(retrieveSequencesForJob)
         .then(function(ctx) {
+          console.log('setting initial extract context');
           ctx.initialExtractContext = initialExContext;
-          ctx.start = startMoment;
+          ctx.state.start = startMoment;
           return ctx;
         })
         .then(initializeJobRunAndKickoff);
@@ -572,18 +648,20 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
               if (match) {
                 if (action == 'start') {
                   if ( ! activeJobs.hasOwnProperty(jobid)) {
-                  q.resolve({jobid:jobid})
-                    .then(retrieveOneJob)
-                    .then(retrieveSequencesForEachJob)
-                    .then(function(ctx) {
-                      ctx.initialExtractContext = req.body;
-                      return ctx;
-                    })
-                    .then(initializeJobRunAndKickoff)
-                    .then(function(ctx) {
-                      return true;
-                    })
-                    .done();
+                    q.resolve({jobid:jobid})
+                      .then(retrieveOneJob)
+                      .then(retrieveLoadProfileForJob)
+                      .then(retrieveSequencesForJob)
+                      .then(function(ctx) {
+                        console.log('setting initial context');
+                        ctx.initialExtractContext = req.body;
+                        return ctx;
+                      })
+                      .then(initializeJobRunAndKickoff)
+                      .then(function(ctx) {
+                        return true;
+                      })
+                      .done();
 
                     // this response gets sent while the job is running
                     res.send({"message":"ok"});
