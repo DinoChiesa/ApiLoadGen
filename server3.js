@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-24 16:00:51>
+// last saved: <2013-July-24 16:35:35>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -540,9 +540,9 @@ function initializeJobRunAndKickoff(context) {
 function setWakeup(context) {
   var jobid,
       initialExContext = context.initialExtractContext,
-      currentHour = (new Date()).getHours(),
-      currentTime = (new Date()).valueOf(),
-      durationOfLastRun = ((new Date().valueOf()) - context.state.start),
+      now = new Date(),
+      currentHour = now.getHours(),
+      durationOfLastRun = now - context.state.start,
       requestsPerHour, sleepTimeInMs;
 
   console.log('===========================================\nsetWakeup');
@@ -571,7 +571,10 @@ function setWakeup(context) {
   if (sleepTimeInMs < 30000) { sleepTimeInMs = 30000; }
 
   console.log('doing ' + requestsPerHour + ' requests per hour');
-  console.log('setWakeup in ' + sleepTimeInMs + 'ms, starting at '+ (new Date()).toString());
+  console.log('sleep for ' + sleepTimeInMs + 'ms');
+  console.log('start at ' + now.toString());
+  console.log('will wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
+
   activeJobs[jobid] =
     setTimeout(function () {
       var startMoment = new Date().valueOf();
