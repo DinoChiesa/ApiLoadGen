@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-24 00:14:45>
+// last saved: <2013-July-24 16:00:51>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -94,7 +94,13 @@ function retrieveOneJob(ctx) {
   var deferredPromise = q.defer();
   console.log('===========================================\nRetrieve one Job: ' +ctx.jobid);
   mClient.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
-    //logTransaction(e, httpReq, httpResp, obj);
+    logTransaction(e, httpReq, httpResp, obj);
+    if (e) {
+      deferredPromise.resolve({
+        state: {job:0, stage:'nojob', jobid:ctx.jobid, error:e},
+        model: {}
+      });
+    }
     if (obj.entities && obj.entities[0]) {
       deferredPromise.resolve({
         state: {job:0, stage:'retrieve', jobid:ctx.jobid},
@@ -140,6 +146,7 @@ function retrieveRequestsForOneSequence(ctx) {
 
   }(ctx));
 }
+
 
 function retrieveLoadProfileForJob(ctx) {
   return (function (context) {
@@ -200,7 +207,7 @@ function retrieveSequencesForJob(ctx) {
       '?ql=' + encodeURIComponent(query);
 
     mClient.get(url, function(e, httpReq, httpResp, obj) {
-      logTransaction(e, httpReq, httpResp, obj);
+      //logTransaction(e, httpReq, httpResp, obj);
       j.sequences = obj.entities;
       context.state.currentSequence = 0;
       deferred.resolve(context);
@@ -389,9 +396,11 @@ function invokeOneRequest(context) {
         method = req.method.toLowerCase(),
         respHandler = function(e, httpReq, httpResp, obj) {
           var i, L, ex;
-          logTransaction(e, httpReq, httpResp, obj);
-          // perform any extraction required for the request
-          if (req.extracts && req.extracts.length>0) {
+          //logTransaction(e, httpReq, httpResp, obj);
+          if (e) {
+            console.log(e);
+          }
+          else if (req.extracts && req.extracts.length>0) {
             // cache the extract functions
             //if ( ! ctx.state.extracts) { ctx.state.extracts = {}; }
             for (i=0, L=req.extracts.length; i<L; i++) {
@@ -412,12 +421,10 @@ function invokeOneRequest(context) {
               //             JSON.stringify(ctx.state.extracts[state.job], null, 2));
             }
           }
-          else {
-            // console.log('-no extracts-');
-          }
           ctx.state.request++;
           deferredPromise.resolve(ctx);
         };
+
 
     if (method === "post") {
       console.log('post ' + suffix);
@@ -546,7 +553,10 @@ function setWakeup(context) {
   else if (context.state.uuid) {
     jobid = context.state.uuid;
   }
-  else jobid = "xxx";
+  else {
+    jobid = "xxx";
+    console.log("context: " + JSON.stringify(context, null, 2));
+  }
 
   // compute and validate the sleep time
   if (currentHour < 0 || currentHour > 23) { currentHour = 0;}
