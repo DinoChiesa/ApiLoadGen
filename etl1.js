@@ -4,11 +4,12 @@
 // etl1.js
 // ------------------------------------------------------------------
 //
-// Load the model from model.json local file, into App Services.
-// This needs to be run only once.
+// A command-line nodejs script which loads the data from the local file
+// named model.json into App Services.  This needs to be run only
+// once. This script is
 //
 // created: Thu Jul 18 15:54:12 2013
-// last saved: <2013-July-23 11:47:26>
+// last saved: <2013-July-24 15:54:14>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -22,10 +23,7 @@ var assert = require('assert'),
     fs = require('fs'),
     filename = "model.json",
     model = JSON.parse(fs.readFileSync(filename, "utf8")),
-    newJob, newSequence, newRequest, requestHash,
-    requestRefs, 
-    promise, urlPath1, urlPath2,
-    s, r, findFn, selection,
+    theJob, promise, requests, s, 
     urlPathPrefix = '/dino/loadgen1',
     i, j, L,
     client = restify.createJsonClient({
@@ -35,24 +33,7 @@ var assert = require('assert'),
       }
     });
 
-function getUuidFinder(uuid) {
-  return function (elt, ix, a) {
-    return (elt.myUuid === uuid);
-  };
-}
-
-// function copyObjProps(src, dst, propList) {
-//   var i, L, prop;
-//   for (i=0, L=propList.length; i<L; i++) {
-//     prop = propList[i];
-//     if (src.hasOwnProperty(prop)) {
-//       dst[prop] = src[prop];
-//     }
-//   }
-// }
-
 function logRequest(e, req, res, obj, payload) {
-  assert.ifError(e);
   console.log('\n' + req.method + ' ' + req.path);
   console.log('headers: ' + JSON.stringify(req._headers, null, 2));
   if (payload) {
@@ -60,134 +41,92 @@ function logRequest(e, req, res, obj, payload) {
   }
   console.log('\nresponse status: ' + res.statusCode);
   console.log('response body: ' + JSON.stringify(obj, null, 2) +'\n\n');
+  assert.ifError(e);
 }
 
-
-function promisifySequence(seq) {
-  return function() {
-    var deferredPromise = q.defer();
-    client.post(urlPathPrefix + urlPath1, seq,
+function promisifyLoadProfile(profile) {
+  return function(context) {
+    var deferredPromise = q.defer(), 
+        urlJobPath = urlPathPrefix + '/jobs/' + context.job.uuid;
+    profile.name += '-' + (new Date()).valueOf();
+    client.post(urlJobPath + '/uses/loadprofiles', profile, 
                 function (e, httpReq, httpResp, obj) {
                   logRequest(e, httpReq, httpResp, obj);
-                  newSequence = obj.entities[0];
-                  urlPath2 = '/sequences/' + newSequence.uuid + '/references/requests';
-                  console.log('urlPath2: ' + urlPath2);
-                  deferredPromise.resolve(true);
+                  deferredPromise.resolve(context);
+                });
+    return deferredPromise.promise;
+  };
+}
+
+function promisifySequence(seq) {
+  return function(context) {
+    var deferredPromise = q.defer(), 
+        urlJobPath = urlPathPrefix + '/jobs/' + context.job.uuid;
+    seq.name += '-' + (new Date()).valueOf();
+    client.post(urlJobPath + '/includes/sequences', seq,
+                function (e, httpReq, httpResp, obj) {
+                  logRequest(e, httpReq, httpResp, obj);
+                  context.sequence = obj.entities[0];
+                  deferredPromise.resolve(context);
                 });
     return deferredPromise.promise;
   };
 }
 
 function promisifyRequest(req) {
-  return function() {
-    var deferredPromise = q.defer();
-    client.post(urlPathPrefix + urlPath2, req,
-                function (e, httpReq, httpResp, obj) {
-                  logRequest(e, httpReq, httpResp, obj);
-                  newRequest = obj.entities[0];
-                  requestHash[req.myUuid] = newRequest.uuid;
-                  deferredPromise.resolve(true);
-                });
+  return function(context) {
+    var deferredPromise = q.defer(), 
+        urlJobPath = urlPathPrefix + '/jobs/' + context.job.uuid;
+        url = urlJobPath + '/includes/sequences/' + context.sequence.uuid + '/references/requests';
+    req.name += '-' + (new Date()).valueOf();
+    client.post(url, req, function (e, httpReq, httpResp, obj) {
+      logRequest(e, httpReq, httpResp, obj);
+      deferredPromise.resolve(context);
+    });
     return deferredPromise.promise;
   };
 }
 
 
-
 console.log('=============================================\n1. create a job');
-newJob = {};
-newJob.defaultProperties = model.defaultProperties;
-newJob.description = model.description;
+// the job entity consists of a subset of the job in the model.json file. 
+theJob = {
+  defaultProperties : model.defaultProperties, 
+  description : model.description, 
+  name : model.name
+};
 
-promise = q.fcall(function(){})
+promise = q.resolve({job: theJob})
 
-.then(function() {
+.then(function(context) {
   var deferredPromise = q.defer();
-  client.post(urlPathPrefix + '/jobs', newJob,
+  client.post(urlPathPrefix + '/jobs', context.job,
               function (e, httpReq, httpResp, obj) {
                 logRequest(e, httpReq, httpResp, obj);
-                newJob = obj.entities[0];
-                deferredPromise.resolve(true);
+                context.job = obj.entities[0];
+                deferredPromise.resolve(context);
               });
   return deferredPromise.promise;
-})
-
-.then(function() {
-  console.log('=============================================\n2. create sequence entities');
-  urlPath1 = '/jobs/' + newJob.uuid + '/includes/sequences';
-  console.log('urlPath1: ' + urlPath1);
-  requestHash = {};
 });
 
+if (model.loadprofiles) {
+  for (i=0, L=model.loadprofiles.length; i<L; i++) {
+    lp = model.loadprofiles[i];
+    promise = promise.then(promisifyLoadProfile(lp));
+  }
+}
 
 // process each sequence in order
-
 for (i=0, L=model.sequences.length; i<L; i++) {
   s = model.sequences[i];
-  requestRefs = s.requestRefs;
-  delete s.requestRefs;
+  requests = s.requests;
+  delete s.requests;
 
   promise = promise.then(promisifySequence(s));
 
-  for (j=0; j < requestRefs.length; j++) {
-    r = requestRefs[j];
-    findFn = getUuidFinder(r);
-    selection = model.requests.filter(findFn);
-    promise = promise.then(promisifyRequest(selection[0]));
+  for (j=0; j < requests.length; j++) {
+    promise = promise.then(promisifyRequest(requests[j]));
   }
-
-  // promise = promise
-  //   .then(function() {
-  //     var i, L1, prop, ri, wrapper,
-  //         deferredPromise = q.defer();
-  //     console.log('=============================================\nupdate request references');
-  //     console.log('requestHash: ' + JSON.stringify(requestHash, null, 2));
-  //     console.log('requestImpls (BEFORE): ' + JSON.stringify(newSequence.requestImpls, null, 2));
-  //     // fixup references?...
-  //     for (i=0, L1=newSequence.requestImpls.length; i<L1; i++) {
-  //       ri = newSequence.requestImpls[i];
-  //       for (prop in requestHash) {
-  //         if (requestHash.hasOwnProperty(prop)) {
-  //           // if old 'requestRef' points to old uuid, apply the new uuid
-  //           if (prop === ri.requestRef) {
-  //            ri.requestRef = requestHash[prop];
-  //           }
-  //         }
-  //       }
-  //     }
-  //     console.log('requestImpls (AFTER): ' + JSON.stringify(newSequence.requestImpls, null, 2));
-  //     wrapper = {requestImpls : newSequence.requestImpls};
-  //     client.put(urlPathPrefix + '/sequences/' + newSequence.uuid, wrapper,
-  //                function (e, httpReq, httpResp, obj) {
-  //                  logRequest(e, httpReq, httpResp, obj);
-  //                  requestHash = {}; // reset for next loop
-  //                  deferredPromise.resolve(true);
-  //                });
-  //     return deferredPromise.promise;
-  //   });
 }
 
-
-
-// promise = promise.then(function() {
-//   console.log('=============================================\n3. create request entities');
-//   urlPath = '/jobs/' + newJob.uuid + '/references/requests';
-//   console.log('urlPath: ' + urlPath);
-// });
-//
-//
-// // process each request in order
-// for (i=0, L=model.requests.length; i<L; i++) {
-//   s = model.requests[i];
-//   promise = promise.then(function() {
-//     var deferredPromise = q.defer();
-//     client.post(urlPathPrefix + urlPath, s,
-//                 function (e, httpReq, httpResp, obj) {
-//                   logRequest(e, httpReq, httpResp, obj);
-//                   deferredPromise.resolve(true);
-//                 });
-//     return deferredPromise.promise;
-//   });
-// }
-
-promise.done(function() { console.log('done.'); process.exit(0);});
+promise.done(function(context) { console.log('done.'); process.exit(0);});

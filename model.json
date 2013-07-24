@@ -11,110 +11,109 @@
     }
   },
 
-  "requests" : [
-    {
-      "type" : "request",
-      "name": "login",
-      "myUuid" : "0B73F0E5-4334-4C04-8819-B8990A5A77BF",
-      "pathSuffix" : "/v1/todolist/token",
-      "method" : "post",
-      "headers" : {
-        "content-type" : "application/json"
-      },
-      "payload" : {
-        "grant_type":"password",
-        "username":"Himself",
-        "password":"JournalisticGrievances"
-      }, 
-      "delayBefore" : 0,
-      "extracts" : [{
-        "description" : "extract the access token",
-        "fn" : "function(obj) {return obj.access_token;}",
-        "valueRef" : "oauth_bearer_token"
-      }]
-    },
-    {
-      "type" : "request",
-      "name" : "retrieveItems",
-      "myUuid" : "B95F4077-C8A8-445F-8B6B-ABC67D023081",
-      "pathSuffix" : "/v1/todolist/users/me/owns/items",
-      "method" : "get",
-      "headers" : {
-        "authorization" : "Bearer {oauth_bearer_token}"
-      }, 
-      "delayBefore" : 0,
-      "extracts" : [{
-        "description" : "extract the uuids of the returned entities",
-        "fn" : "function(obj) {var i,a=[]; for(i=0;i<obj.entities.length;i++){a.push(obj.entities[i].uuid);} return a;}",
-        "valueRef" : "uuids"
-      }]
-    },
-    {
-      "type" : "request",
-      "name" : "retrieveRandomItem",
-      "myUuid" : "7172D409-48C1-43BA-A5B0-5B654FD19B68",
-      "description" : "retrieve one item, at random",
-      "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
-      "method" : "get",
-      "headers" : {
-        "authorization" : "Bearer {oauth_bearer_token}"
-      }, 
-      "delayBefore" : 40
-    },
-    {
-      "type" : "request",
-      "name" : "updateRandomItem1",
-      "myUuid" : "CB160513-7A94-497A-A72A-258413D51FAD",
-      "description" : "update one item, PUTing a random string into a property",
-      "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
-      "method" : "put",
-      "headers" : {
-        "authorization" : "Bearer {oauth_bearer_token}"
-      },
-      "delayBefore" : 40, 
-      "payload" : {
-        "updatedProperty" : "{'updated: ' + (new Date()).toString()}"
-      }
-    },
-    {
-      "type" : "request",
-      "name" : "updateRandomItem2",
-      "myUuid" : "EBF9E797-8104-4E11-8E83-897C6D8E203F",
-      "description" : "update one item with a complex value for a property",
-      "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
-      "method" : "put",
-      "delayBefore" : 40, 
-      "headers" : {
-        "authorization" : "Bearer {oauth_bearer_token}"
-      },
-      "payload" : {
-        "updatedNestedObject" : {
-          "lastUpdate" : "{'updated: ' + (new Date()).toString()}",
-          "number" : "{Math.floor(Math.random() * 72)}"
-        }
-      }
-    }
-  ],
-
+  "loadprofiles" : [{ 
+    "type" : "loadprofile", 
+    "name" : "loadprofile1", 
+    "perHourCounts" : [
+      44, 35, 40, 36, 27, 40, 40, 54, 
+      57, 62, 54, 61, 73, 70, 53, 50, 
+      47, 62, 74, 88, 83, 77, 70, 51
+    ] 
+  }], 
 
   "sequences" : [
     {
       "type" : "sequence",
-      "uuid" : "EC0EAEF4-F7D8-4AA0-B844-5409E98C9CA1",
       "description" : "login",
       "name" : "seqLogin",
       "iterations" : 1,
-      "requestRefs" : ["0B73F0E5-4334-4C04-8819-B8990A5A77BF" ]
+      "requests" : [ {
+        "type" : "request",
+        "name": "login",
+        "pathSuffix" : "/v1/todolist/token",
+        "method" : "post",
+        "headers" : {
+          "content-type" : "application/json"
+        },
+        "payload" : {
+          "grant_type":"password",
+          "username":"{username}",
+          "password":"{password}"
+        }, 
+        "delayBefore" : 0,
+        "extracts" : [{
+          "description" : "extract the access token",
+          "fn" : "function(obj) {return obj.access_token;}",
+          "valueRef" : "oauth_bearer_token"
+        }]
+      }]
     },
 
     {
       "type" : "sequence",
       "name" : "seqQueryAndUpdate1",
-      "uuid" : "767F5E8E-AE11-475D-B7DE-CD99363D9723",
       "description" : "query all items then get one item at random, and do two updates",
-      "iterations" : "Math.floor(Math.random() * 5 + 3)",
+      "iterations" : "Math.floor(Math.random() * 3 + 2)",
       "delayBetweenIterations" : 100,
-      "requestRefs" : [ "B95F4077-C8A8-445F-8B6B-ABC67D023081", "7172D409-48C1-43BA-A5B0-5B654FD19B68", "CB160513-7A94-497A-A72A-258413D51FAD", "EBF9E797-8104-4E11-8E83-897C6D8E203F" ]
+      "requests" : [ 
+        {
+          "type" : "request",
+          "name" : "retrieveItems",
+          "pathSuffix" : "/v1/todolist/users/me/owns/items",
+          "method" : "get",
+          "headers" : {
+            "authorization" : "Bearer {oauth_bearer_token}"
+          }, 
+          "delayBefore" : 0,
+          "extracts" : [{
+            "description" : "extract the uuids of the returned entities",
+            "fn" : "function(obj) {var i,a=[]; for(i=0;i<obj.entities.length;i++){a.push(obj.entities[i].uuid);} return a;}",
+            "valueRef" : "uuids"
+          }]
+        },
+        {
+          "type" : "request",
+          "name" : "retrieveRandomItem",
+          "description" : "retrieve one item, at random",
+          "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
+          "method" : "get",
+          "headers" : {
+            "authorization" : "Bearer {oauth_bearer_token}"
+          }, 
+          "delayBefore" : 40
+        },
+        {
+          "type" : "request",
+          "name" : "updateRandomItem1",
+          "description" : "update one item, PUTing a random string into a property",
+          "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
+          "method" : "put",
+          "headers" : {
+            "authorization" : "Bearer {oauth_bearer_token}"
+          },
+          "delayBefore" : 40, 
+          "payload" : {
+            "updatedProperty" : "{'updated: ' + (new Date()).toString()}"
+          }
+        },
+        {
+          "type" : "request",
+          "name" : "updateRandomItem2",
+          "description" : "update one item with a complex value for a property",
+          "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
+          "method" : "put",
+          "delayBefore" : 40, 
+          "headers" : {
+            "authorization" : "Bearer {oauth_bearer_token}"
+          },
+          "payload" : {
+            "updatedNestedObject" : {
+              "lastUpdate" : "{'updated: ' + (new Date()).toString()}",
+              "number" : "{Math.floor(Math.random() * 72)}"
+            }
+          }
+        }
+      ]
     }
   ]
 }
