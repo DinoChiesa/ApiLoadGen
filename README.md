@@ -32,14 +32,14 @@ This is currently a proof of concept. It's getting there.
 Interesting Files
 ----------------------
 
-* `retrieve1.js`  
+* `retrieve1.js`
 a Nodejs program intended for use from the command line. It shows how to retrieve the "job model" from App Services
 
 
-* `run3.js`  
+* `run3.js`
 another nodejs command-line tool, shows how to retrieve the all the stored jobs, and then run each one.
 
-* `server3.js`  
+* `server3.js`
 a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs, sequences, and requests under management.
 
 
@@ -75,16 +75,16 @@ optionally a payload for the request.
 
 For example:
 
-* `GET /{entity-collection}`  
+* `GET /{entity-collection}`
     Get the list of defined entities of the given type. The collection
     should be one of {jobs, sequences, requests, lprofile}
 
-* `POST /{entity-collection}`  
+* `POST /{entity-collection}`
     create a new entity, given the posted entity definition.
 
-* `GET /{entity-collection}/{entity-id}`  
+* `GET /{entity-collection}/{entity-id}`
 
-* `PUT /{entity-collection}/{entity-id}`  
+* `PUT /{entity-collection}/{entity-id}`
    partial put to update an entity definition.
 
 
@@ -100,7 +100,7 @@ Job Control
 
 In addition to the data access APIs shown above, there are a few job control APIs:
 
-* `POST /jobs/{job-id}?action=start`  
+* `POST /jobs/{job-id}?action=start`
    to begin running the job. The job runs "forever".  The payload should be a
    application/json containing the initial context for the job.
    Example:
@@ -113,7 +113,7 @@ In addition to the data access APIs shown above, there are a few job control API
 
 
 
-* `POST /jobs/{job-id}?action=stop`  
+* `POST /jobs/{job-id}?action=stop`
    to stop running the job.
 
 
@@ -205,7 +205,7 @@ Then add 1 or more requests to each sequence, like this:
 
 The "extracts" property defines a post-request step that can extract information from the payload or response headers. The fn property of that object should be the text source of a compilable JavaScript function. The valueRef contains the name of the reference variable to hold the extracted value.
 
-This then can be referenced later in replacement templates for inputs to subsequent requests.  For example, a subsequent request could use this: 
+This then can be referenced later in replacement templates for inputs to subsequent requests.  For example, a subsequent request could use this:
 
     {
       "type" : "request",
@@ -217,14 +217,14 @@ This then can be referenced later in replacement templates for inputs to subsequ
       }
     }
 
-... and the resulting header sent in the outbound request would include the bearer token extracted from the previous "login" request. 
+... and the resulting header sent in the outbound request would include the bearer token extracted from the previous "login" request.
 
 
 If you want the load rate to vary over time, you need to add a load profile to
 the job. A load profile is very simply, a list of numbers specifying the target
 number of job runs per hour, for hours 0..24.
 
-Add a load profile to a job like this: 
+Add a load profile to a job like this:
 
 `POST /jobs/{job-id}/uses/loadprofiles`
 
@@ -276,3 +276,4 @@ Bugs
 - The settings for the job store are hardcoded to an open App Services app under my personal ccount.
 - There's no companion UI to create job definitions or inquire their status.  Should be done in angularJS!
 - Currently no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.
+- starting a job with a non-existent job id results in {"message":"ok"} response. Expected: 400 {"message":"no such job"}
