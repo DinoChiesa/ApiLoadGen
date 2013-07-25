@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-24 16:35:35>
+// last saved: <2013-July-25 06:53:08>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -30,18 +30,20 @@
 var restify = require('restify'),
     assert = require('assert'),
     bunyan = require('bunyan'),
+    log = new Log(), 
     q = require ('q'),
     sleep = require('sleep'),
-    log = bunyan.createLogger({
-      name: 'my_restify_application',
-      level: process.env.LOG_LEVEL || 'info',
-      stream: process.stdout,
-      serializers: bunyan.stdSerializers
-    }),
-    server = restify.createServer({
-      log: log,
-      name: 'my_restify_application'
-    }),
+    // bunyanLog = bunyan.createLogger({
+    //   name: 'my_restify_application',
+    //   level: process.env.LOG_LEVEL || 'info',
+    //   stream: process.stdout,
+    //   serializers: bunyan.stdSerializers
+    // }),
+    // server = restify.createServer({
+    //   log: bunyanLog,
+    //   name: 'my_restify_application'
+    // }),
+    server = restify.createServer(),
     activeJobs = {},
     oneHourInMs = 60 * 60 * 1000,
     fiveMinutesInMs = 5 * 60 * 1000,
@@ -54,6 +56,16 @@ var restify = require('restify'),
         'Accept' : 'application/json'
       }
     });
+
+  function Log(id) { }
+
+  Log.prototype.write = function(str) {
+    var time = (new Date()).toString(), me = this;
+    console.log('[' + time.substr(11, 4) + '-' +
+      time.substr(4, 3) + '-' + time.substr(8, 2) + ' ' +
+      time.substr(16, 8) + '] ' + str );
+  };
+
 
 function noop() {}
 
@@ -79,7 +91,7 @@ function logTransaction(e, req, res, obj, payload) {
 
 function retrieveAllJobs() {
   var deferredPromise = q.defer();
-  console.log('===========================================\nRetrieve Jobs');
+  log.write('retrieveAllJobs');
   mClient.get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
     //logTransaction(e, httpReq, httpResp, obj);
     deferredPromise.resolve({
@@ -92,7 +104,7 @@ function retrieveAllJobs() {
 
 function retrieveOneJob(ctx) {
   var deferredPromise = q.defer();
-  console.log('===========================================\nRetrieve one Job: ' +ctx.jobid);
+  log.write('retrieveOneJob(' +ctx.jobid + ')');
   mClient.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
     logTransaction(e, httpReq, httpResp, obj);
     if (e) {
@@ -101,7 +113,7 @@ function retrieveOneJob(ctx) {
         model: {}
       });
     }
-    if (obj.entities && obj.entities[0]) {
+    else if (obj.entities && obj.entities[0]) {
       deferredPromise.resolve({
         state: {job:0, stage:'retrieve', jobid:ctx.jobid},
         model: {jobs:obj.entities}
@@ -133,7 +145,7 @@ function retrieveRequestsForOneSequence(ctx) {
     s = model.jobs[state.job].sequences[state.currentSequence];
     url = modelSourceUrlPrefix + s.metadata.connections.references;
 
-    console.log('========================================\nRetrieve requests ');
+    log.write('retrieveRequestsForOneSequence');
     mClient.get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
       s.requests = obj.entities;
@@ -157,7 +169,7 @@ function retrieveLoadProfileForJob(ctx) {
         query = "select * where type = 'loadprofile'",
         url;
 
-    console.log('========================================\nretrieveLoadProfileForJob');
+    log.write('retrieveLoadProfileForJob');
 
     if ( ! job) {
       return q.resolve(context);
@@ -165,8 +177,7 @@ function retrieveLoadProfileForJob(ctx) {
 
     deferred = q.defer();
     url = modelSourceUrlPrefix +
-      job.metadata.connections.uses +
-      '?ql=' + encodeURIComponent(query);
+      job.metadata.connections.uses + '?ql=' + encodeURIComponent(query);
 
     mClient.get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
@@ -194,17 +205,16 @@ function retrieveSequencesForJob(ctx) {
 
     // check for termination
     if ((typeof model.jobs == "undefined") || (state.job == model.jobs.length)) {
-      console.log("retrieveSequencesForJob: terminate");
+      log.write("retrieveSequencesForJob: terminate");
       return q.resolve(context);
     }
 
     deferred = q.defer();
-    console.log('========================================\nretrieveSequencesForJob');
+    log.write('retrieveSequencesForJob');
     j = jobs[state.job];
 
     url = modelSourceUrlPrefix +
-      j.metadata.connections.includes +
-      '?ql=' + encodeURIComponent(query);
+      j.metadata.connections.includes + '?ql=' + encodeURIComponent(query);
 
     mClient.get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
@@ -223,7 +233,7 @@ function retrieveSequencesForJob(ctx) {
 // ==================================================================
 
 function trackFailure(e) {
-  console.log('failure: ' + e);
+  log.write('failure: ' + e);
 }
 
 
@@ -333,7 +343,7 @@ function invokeOneRequest(context) {
       actualPayload,
       client, p = q.resolve(context);
 
-  console.log('=================== invokeOneRequest');
+  log.write('invokeOneRequest');
 
   if (state.job === 0 && state.request === 0 &&
       state.sequence === 0 && state.iteration === 0) {
@@ -370,7 +380,7 @@ function invokeOneRequest(context) {
 
     p = p.then(function(ctx) {
       ctx.state.headerInjector = function (clientRequest) {
-        // The header is still mutable using the setHeader(name, value),
+        // The header is mutable using the setHeader(name, value),
         // getHeader(name), removeHeader(name)
         var match, value;
         for (var hdr in req.headers) {
@@ -398,7 +408,7 @@ function invokeOneRequest(context) {
           var i, L, ex;
           //logTransaction(e, httpReq, httpResp, obj);
           if (e) {
-            console.log(e);
+            log.write(e);
           }
           else if (req.extracts && req.extracts.length>0) {
             // cache the extract functions
@@ -406,10 +416,10 @@ function invokeOneRequest(context) {
             for (i=0, L=req.extracts.length; i<L; i++) {
               ex = req.extracts[i];
               if ( ! ex.compiledFn) {
-                console.log('eval: ' + ex.fn);
+                log.write('eval: ' + ex.fn);
                 ex.compiledFn = eval('(' + ex.fn + ')');
               }
-              console.log(ex.description);
+              log.write(ex.description);
               // actually invoke the compiled fn
               try {
                 ctx.state.extracts[ex.valueRef] = ex.compiledFn(obj);
@@ -427,17 +437,17 @@ function invokeOneRequest(context) {
 
 
     if (method === "post") {
-      console.log('post ' + suffix);
+      log.write('post ' + suffix);
       actualPayload = expandEmbeddedTemplates(ctx, req.payload);
       client.post(suffix, actualPayload, respHandler);
     }
     else if (method === "put") {
-      console.log('put ' + suffix);
+      log.write('put ' + suffix);
       actualPayload = expandEmbeddedTemplates(ctx, req.payload);
       client.put(suffix, actualPayload, respHandler);
     }
     else if (method === "get") {
-      console.log('get ' + suffix);
+      log.write('get ' + suffix);
       client.get(suffix, respHandler);
     }
     else {
@@ -459,20 +469,18 @@ function runJob(context) {
       job = model.jobs[0],
       p, sequence;
 
-  console.log('++++++++++++++++++++++++++++++++++++++++++++ runJob ');
-
   // check for termination.
-  // This is an unrolled version of a 4-level-deep nested loop
+  // This is an unrolled version of a 3-level-deep nested loop
   if (state.request === state.R) {
     state.request = 0;
     state.iteration++;
-    console.log('+++++++ next Iteration');
+    log.write('++ Iteration');
     return q.resolve(context).then(runJob);
   }
   if (state.iteration === state.I[state.sequence]) {
     state.iteration = 0;
     state.sequence++;
-    console.log('+++++++ next Sequence');
+    log.write('++ Sequence');
     return q.resolve(context).then(runJob, trackFailure);
   }
   if (state.sequence === state.S) {
@@ -487,9 +495,9 @@ function runJob(context) {
     if ( ! state.I[state.sequence]) {
       state.I[state.sequence] = resolveNumeric(job.sequences[state.sequence].iterations);
     }
-    console.log('R ' + (state.request + 1) + '/' + state.R +
-                ' I ' + (state.iteration + 1) + '/' + state.I[state.sequence] +
-                ' S ' + (state.sequence + 1) + '/' + state.S);
+    log.write('R ' + (state.request + 1) + '/' + state.R +
+              ' I ' + (state.iteration + 1) + '/' + state.I[state.sequence] +
+              ' S ' + (state.sequence + 1) + '/' + state.S);
   }
 
   // if we arrive here we're doing a request, implies an async call
@@ -516,7 +524,7 @@ function initializeJobRunAndKickoff(context) {
     console.log("-no job-");
     context.state.sequence = 0;
     context.state.start = now;
-    return q.resolve(context).then(setWakeup, trackFailure);
+    return q.resolve(context); // nothing more to do
   }
 
   context.state = {
@@ -545,7 +553,7 @@ function setWakeup(context) {
       durationOfLastRun = now - context.state.start,
       requestsPerHour, sleepTimeInMs;
 
-  console.log('===========================================\nsetWakeup');
+  log.write('setWakeup');
 
   if (context.model.jobs && context.model.jobs[0]) {
     jobid = context.model.jobs[0].uuid;
@@ -555,7 +563,7 @@ function setWakeup(context) {
   }
   else {
     jobid = "xxx";
-    console.log("context: " + JSON.stringify(context, null, 2));
+    log.write("context: " + JSON.stringify(context, null, 2));
   }
 
   // compute and validate the sleep time
@@ -570,10 +578,10 @@ function setWakeup(context) {
 
   if (sleepTimeInMs < 30000) { sleepTimeInMs = 30000; }
 
-  console.log('doing ' + requestsPerHour + ' requests per hour');
-  console.log('sleep for ' + sleepTimeInMs + 'ms');
-  console.log('start at ' + now.toString());
-  console.log('will wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
+  log.write('doing ' + requestsPerHour + ' requests per hour');
+  log.write('sleep for ' + sleepTimeInMs + 'ms');
+  log.write('start at ' + now.toString());
+  log.write('will wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
 
   activeJobs[jobid] =
     setTimeout(function () {
@@ -583,7 +591,7 @@ function setWakeup(context) {
         .then(retrieveLoadProfileForJob)
         .then(retrieveSequencesForJob)
         .then(function(ctx) {
-          console.log('setting initial extract context');
+          log.write('setting initial extract context');
           ctx.initialExtractContext = initialExContext;
           ctx.state.start = startMoment;
           return ctx;
@@ -628,26 +636,29 @@ server.use(restify.queryParser());
 //     });
 //   }
 // });
-//
-// server.get(new RegExp('^/(jobs)/([^/]+)$'), function(req, res, next) {
-//   var match = reUuid.exec(req.params[1]);
-//   if (match) {
-//     console.log('get job, job id: ' + req.params[1]);
-//     q.resolve({jobid:req.params[1]})
-//       .then(retrieveOneJob)
-//       .then(retrieveSequencesForEachJob)
-//       .then(function(ctx) {
-//         res.send(ctx.model.jobs[0]);
-//         next();
-//         return true;
-//       })
-//       .done();
-//   }
-//   else {
-//     res.send(400, {msg:'malformed uuid'});
-//     return next();
-//   }
-// });
+
+server.get('/jobs/:jobid', function(req, res, next) {
+  var jobid = req.params.jobid,
+      match = reUuid.exec(req.params.jobid);
+  if (match) {
+    log.write('get job, job id: ' + req.params.jobid);
+    q.resolve({jobid:req.params.jobid})
+      .then(retrieveOneJob)
+      .then(retrieveSequencesForJob)
+      .then(function(ctx) {
+        var job = ctx.model.jobs[0];
+        job.status = (activeJobs.hasOwnProperty(req.params.jobid)) ? "running" : "stopped";
+        res.send(job);
+        next();
+        return true;
+      })
+      .done();
+  }
+  else {
+    res.send(400, {status:"fail", message:'malformed uuid'});
+    return next();
+  }
+});
 
 server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
             function(req, res, next) {
@@ -663,10 +674,21 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                   if ( ! activeJobs.hasOwnProperty(jobid)) {
                     q.resolve({jobid:jobid})
                       .then(retrieveOneJob)
+                      .then(function(ctx){
+                        // this response gets sent while the job is running
+                        if ( ! ctx.model.jobs) {
+                          res.send({"status":"fail","message":"no job"});
+                        }
+                        else {
+                          res.send({"status":"ok"});
+                        }
+                        next();
+                        return ctx;
+                      })
                       .then(retrieveLoadProfileForJob)
                       .then(retrieveSequencesForJob)
                       .then(function(ctx) {
-                        console.log('setting initial context');
+                        log.write('setting initial context');
                         ctx.initialExtractContext = req.body;
                         return ctx;
                       })
@@ -676,12 +698,9 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                       })
                       .done();
 
-                    // this response gets sent while the job is running
-                    res.send({"message":"ok"});
-                    next();
                   }
                   else {
-                    res.send(400, {"message":"that job is already  running"});
+                    res.send(400, {status:"fail",message:"that job is already  running"});
                     return next();
                   }
                 }
@@ -690,22 +709,22 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                     timeoutId = activeJobs[jobid];
                     clearTimeout(timeoutId);
                     delete activeJobs[jobid];
-                    console.log('stop job ' + jobid);
-                    res.send({"message":"ok"});
+                    log.write('stop job ' + jobid);
+                    res.send({status:"ok"});
                     return next();
                   }
                   else {
-                    res.send(400, {"message":"that job is not currently running"});
+                    res.send(400, {status:"fail", message:"that job is not currently running"});
                     return next();
                   }
                 }
                 else {
-                  res.send(400, {msg:'invalid action'});
+                  res.send(400, {status:"fail", message:'invalid action'});
                   return next();
                 }
               }
               else {
-                res.send(400, {msg:'malformed jobid'});
+                res.send(400, {status:"fail", message:'malformed jobid'});
                 return next();
               }
             });
@@ -731,43 +750,43 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
 //   }
 // });
 
-server.get(new RegExp('^/jobs/('+reUuidStr+')/includes$'), function(req, res, next) {
-  console.log('looking at: ' + req.params[0]);
-  var match = reUuid.exec(req.params[0]);
-  if (match) {
-    mClient.get(modelSourceUrlPrefix + '/jobs/' + req.params[0] + '/includes', function(e, httpReq, httpResp, obj) {
-      //logTransaction(e, httpReq, httpResp, obj);
-      if (obj){
-        res.send(obj.entities);
-      }
-      return next();
-    });
-  }
-  else {
-    res.send(400, {msg:'malformed uuid'});
-    return next();
-  }
-});
-
-
-server.get(new RegExp('^/jobs/('+reUuidStr+')/includes/('+reUuidStr+')/references$'), function(req, res, next) {
-  var match0 = reUuid.exec(req.params[0]),
-      match1 = reUuid.exec(req.params[1]);
-
-  if (match0 && match1) {
-    mClient.get(modelSourceUrlPrefix + req.url, function(e, httpReq, httpResp, obj) {
-      //logTransaction(e, httpReq, httpResp, obj);
-      if (obj){
-        res.send(obj.entities);
-      }
-      return next();
-    });
-  }
-  else {
-    res.send(400, {msg:'malformed uuid'});
-    return next();
-  }
-});
+// server.get(new RegExp('^/jobs/('+reUuidStr+')/includes$'), function(req, res, next) {
+//   console.log('looking at: ' + req.params[0]);
+//   var match = reUuid.exec(req.params[0]);
+//   if (match) {
+//     mClient.get(modelSourceUrlPrefix + '/jobs/' + req.params[0] + '/includes', function(e, httpReq, httpResp, obj) {
+//       //logTransaction(e, httpReq, httpResp, obj);
+//       if (obj){
+//         res.send(obj.entities);
+//       }
+//       return next();
+//     });
+//   }
+//   else {
+//     res.send(400, {msg:'malformed uuid'});
+//     return next();
+//   }
+// });
+// 
+// 
+// server.get(new RegExp('^/jobs/('+reUuidStr+')/includes/('+reUuidStr+')/references$'), function(req, res, next) {
+//   var match0 = reUuid.exec(req.params[0]),
+//       match1 = reUuid.exec(req.params[1]);
+// 
+//   if (match0 && match1) {
+//     mClient.get(modelSourceUrlPrefix + req.url, function(e, httpReq, httpResp, obj) {
+//       //logTransaction(e, httpReq, httpResp, obj);
+//       if (obj){
+//         res.send(obj.entities);
+//       }
+//       return next();
+//     });
+//   }
+//   else {
+//     res.send(400, {msg:'malformed uuid'});
+//     return next();
+//   }
+// });
 
 // ------------------------------------------------------------------
 
