@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-25 06:53:08>
+// last saved: <2013-July-25 06:57:24>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -580,7 +580,7 @@ function setWakeup(context) {
 
   log.write('doing ' + requestsPerHour + ' requests per hour');
   log.write('sleep for ' + sleepTimeInMs + 'ms');
-  log.write('start at ' + now.toString());
+  //log.write('start at ' + now.toString());
   log.write('will wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
 
   activeJobs[jobid] =
@@ -791,5 +791,6 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
 // ------------------------------------------------------------------
 
 server.listen(8001, function() {
-  console.log('listening: %s', server.url);
+  log.write('=======================================================');
+  log.write('loadgen server start, listening: ' + server.url);
 });
