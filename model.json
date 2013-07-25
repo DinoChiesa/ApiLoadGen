@@ -1,6 +1,5 @@
 {
   "type" : "job",
-  "uuid" : "14D0EED8-5A09-44C2-B71A-0C5C46497580",
   "name": "job1",
   "description": "A simple load test to login to App Services, and perform some queries and updates",
   "defaultProperties": {
