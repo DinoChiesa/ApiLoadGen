@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-25 06:57:24>
+// last saved: <2013-July-25 09:34:21>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -50,12 +50,7 @@ var restify = require('restify'),
     modelSourceUrlPrefix = '/dino/loadgen1',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
     reUuid = new RegExp(reUuidStr),
-    mClient = restify.createJsonClient({
-      url: 'https://api.usergrid.com/',
-      headers: {
-        'Accept' : 'application/json'
-      }
-    });
+    mClient;
 
   function Log(id) { }
 
@@ -66,6 +61,18 @@ var restify = require('restify'),
       time.substr(16, 8) + '] ' + str );
   };
 
+
+function getModelClient() {
+  if ( ! mClient) {
+    mClient = restify.createJsonClient({
+      url: 'https://api.usergrid.com/',
+      headers: {
+        'Accept' : 'application/json'
+      }
+    });
+  }
+  return mClient;
+}
 
 function noop() {}
 
@@ -92,7 +99,7 @@ function logTransaction(e, req, res, obj, payload) {
 function retrieveAllJobs() {
   var deferredPromise = q.defer();
   log.write('retrieveAllJobs');
-  mClient.get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
+  getModelClient().get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
     //logTransaction(e, httpReq, httpResp, obj);
     deferredPromise.resolve({
       state: {job:0, stage:'retrieve'},
@@ -105,9 +112,10 @@ function retrieveAllJobs() {
 function retrieveOneJob(ctx) {
   var deferredPromise = q.defer();
   log.write('retrieveOneJob(' +ctx.jobid + ')');
-  mClient.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
+  getModelClient().get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
     logTransaction(e, httpReq, httpResp, obj);
     if (e) {
+      console.log('error: ' + JSON.stringify(e, null, 2));
       deferredPromise.resolve({
         state: {job:0, stage:'nojob', jobid:ctx.jobid, error:e},
         model: {}
@@ -120,6 +128,7 @@ function retrieveOneJob(ctx) {
       });
     }
     else {
+      console.log('non response? ' + JSON.stringify(obj, null, 2));
       deferredPromise.resolve({
         state: {job:0, stage:'nojob', jobid:ctx.jobid},
         model: {}
@@ -146,7 +155,7 @@ function retrieveRequestsForOneSequence(ctx) {
     url = modelSourceUrlPrefix + s.metadata.connections.references;
 
     log.write('retrieveRequestsForOneSequence');
-    mClient.get(url, function(e, httpReq, httpResp, obj) {
+    getModelClient().get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
       s.requests = obj.entities;
       state.currentSequence++;
@@ -521,10 +530,24 @@ function initializeJobRunAndKickoff(context) {
   var now = (new Date()).valueOf();
   // initialize context for running
   if ( ! context.model.jobs) {
-    console.log("-no job-");
+    log.write("-no job-");
     context.state.sequence = 0;
     context.state.start = now;
-    return q.resolve(context); // nothing more to do
+    // nothing more to do?
+
+    // Something went wrong with the GET /jobs/{jobid} from the store.  If the
+    // failure during retrieval of job information is temporary, then this case
+    // should continue with a setWakeup.  If the job has been removed and is no
+    // longer available (404), then the this case should stop. 
+    if (context.state.error) {
+      if (context.state.error.statusCode === 404) {
+        return q.resolve(context); 
+      }
+      // get a new client next time, attempt to recover.
+      mClient = null;
+      return q.resolve(context).then(setWakeup); 
+    }
+    return q.resolve(context); 
   }
 
   context.state = {
@@ -551,15 +574,15 @@ function setWakeup(context) {
       now = new Date(),
       currentHour = now.getHours(),
       durationOfLastRun = now - context.state.start,
-      requestsPerHour, sleepTimeInMs;
+      runsPerHour, sleepTimeInMs;
 
   log.write('setWakeup');
 
   if (context.model.jobs && context.model.jobs[0]) {
     jobid = context.model.jobs[0].uuid;
   }
-  else if (context.state.uuid) {
-    jobid = context.state.uuid;
+  else if (context.state.jobid) {
+    jobid = context.state.jobid;
   }
   else {
     jobid = "xxx";
@@ -568,17 +591,17 @@ function setWakeup(context) {
 
   // compute and validate the sleep time
   if (currentHour < 0 || currentHour > 23) { currentHour = 0;}
-  requestsPerHour = (context.model.jobs &&
-                     context.model.jobs[0].loadprofile &&
-                     context.model.jobs[0].loadprofile[currentHour]) ?
+  runsPerHour = (context.model.jobs &&
+                 context.model.jobs[0].loadprofile &&
+                 context.model.jobs[0].loadprofile[currentHour]) ?
     context.model.jobs[0].loadprofile[currentHour] : 12; // default
 
   sleepTimeInMs =
-    Math.floor(oneHourInMs / requestsPerHour) - durationOfLastRun;
+    Math.floor(oneHourInMs / runsPerHour) - durationOfLastRun;
 
   if (sleepTimeInMs < 30000) { sleepTimeInMs = 30000; }
 
-  log.write('doing ' + requestsPerHour + ' requests per hour');
+  log.write('doing ' + runsPerHour + ' runs per hour');
   log.write('sleep for ' + sleepTimeInMs + 'ms');
   //log.write('start at ' + now.toString());
   log.write('will wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
