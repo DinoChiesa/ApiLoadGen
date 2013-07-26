@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-26 09:26:50>
+// last saved: <2013-July-26 10:16:24>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -101,13 +101,22 @@ function retrieveAllJobs() {
   log.write('retrieveAllJobs');
   getModelClient().get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
     //logTransaction(e, httpReq, httpResp, obj);
-    deferredPromise.resolve({
-      state: {job:0, stage:'retrieve'},
-      model: {jobs:obj.entities}
-    });
+    if (e) {
+      deferredPromise.resolve({
+        state: {job:0, stage:'retrieve', error:e},
+        model: {jobs:{}}
+      });
+    }
+    else {
+      deferredPromise.resolve({
+        state: {job:0, stage:'retrieve'},
+        model: {jobs:obj.entities}
+      });
+    }
   });
   return deferredPromise.promise;
 }
+
 
 function retrieveOneJob(ctx) {
   var deferredPromise = q.defer();
@@ -234,7 +243,7 @@ function retrieveSequencesForJob(ctx) {
       else {
         j.sequences = obj.entities;
       }
-        context.state.currentSequence = 0;
+      context.state.currentSequence = 0;
       deferred.resolve(context);
     });
 
