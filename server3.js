@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-25 09:34:21>
+// last saved: <2013-July-26 09:26:50>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -227,13 +227,19 @@ function retrieveSequencesForJob(ctx) {
 
     mClient.get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
-      j.sequences = obj.entities;
-      context.state.currentSequence = 0;
+      if (e) {
+        log.write('error: ' + JSON.stringify(e, null, 2));
+        j.sequences = [];
+      }
+      else {
+        j.sequences = obj.entities;
+      }
+        context.state.currentSequence = 0;
       deferred.resolve(context);
     });
 
     return deferred.promise
-      .then(retrieveRequestsForOneSequence)
+      .then(retrieveRequestsForOneSequence) // increments state.job
       .then(retrieveSequencesForJob);
 
   }(ctx));
@@ -682,6 +688,23 @@ server.get('/jobs/:jobid', function(req, res, next) {
     return next();
   }
 });
+
+server.get('/jobs', function(req, res, next) {
+  log.write('get jobs');
+  q.fcall(retrieveAllJobs)
+    .then(retrieveSequencesForJob)
+    .then(function(ctx) {
+      ctx.model.jobs.forEach(function (element, index, array){
+        element.status = (activeJobs.hasOwnProperty(element.uuid)) ? 
+          "running" : "stopped";
+      });
+      res.send(ctx.model.jobs);
+      next();
+      return true;
+    })
+    .done();
+});
+
 
 server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
             function(req, res, next) {
