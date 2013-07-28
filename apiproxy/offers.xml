@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="1" name="offers">
+    <ConfigurationVersion minorVersion="0" majorVersion="4"/>
+    <CreatedAt>1371097850195</CreatedAt>
+    <CreatedBy>mukundha@apigee.com</CreatedBy>
+    <Description>Offers API</Description>
+    <DisplayName>offers</DisplayName>
+    <LastModifiedAt>1371097853453</LastModifiedAt>
+    <LastModifiedBy>mukundha@apigee.com</LastModifiedBy>
+    <Policies/>
+    <ProxyEndpoints/>
+    <Resources/>
+    <TargetServers/>
+    <TargetEndpoints/>
+</APIProxy>

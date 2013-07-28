@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage enabled="true" continueOnError="false" async="false" name="CORSPreflight">
+    <DisplayName>CORSPreflight</DisplayName>
+    <FaultRules/>
+    <Properties/>  
+    <Set>
+        <Headers>
+            <Header name='Access-Control-Allow-Origin'>*</Header>
+            <Header name='Access-Control-Allow-Methods'>POST, GET, OPTIONS</Header>
+            <Header name='Access-Control-Allow-Headers'>Accept, Content-Type, Authorization</Header>
+            <Header name='Access-Control-Allow-Credentials'>true</Header> 
+        </Headers>
+    </Set>    
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="request"></AssignTo>
+</AssignMessage>
