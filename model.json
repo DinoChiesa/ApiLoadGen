@@ -47,7 +47,6 @@
         }]
       }]
     },
-
     {
       "type" : "sequence",
       "name" : "seqQueryAndUpdate1",
@@ -83,25 +82,11 @@
         },
         {
           "type" : "request",
-          "name" : "updateRandomItem1",
-          "description" : "update one item, PUTing a random string into a property",
+          "name" : "updateRandomItem",
+          "description" : "update one randomly-selected item with a contrived complex value for a property",
           "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
           "method" : "put",
-          "headers" : {
-            "authorization" : "Bearer {oauth_bearer_token}"
-          },
-          "delayBefore" : 40, 
-          "payload" : {
-            "updatedProperty" : "{'updated: ' + (new Date()).toString()}"
-          }
-        },
-        {
-          "type" : "request",
-          "name" : "updateRandomItem2",
-          "description" : "update one item with a complex value for a property",
-          "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
-          "method" : "put",
-          "delayBefore" : 40, 
+          "delayBefore" : 30, 
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
           },

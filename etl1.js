@@ -4,12 +4,12 @@
 // etl1.js
 // ------------------------------------------------------------------
 //
-// A command-line nodejs script which loads the data from the local file
-// named model.json into App Services.  This needs to be run only
-// once. This script is
+// A command-line nodejs script which loads the data from the named
+// local file into App Services.  This needs to be run only once per
+// job. This script is a supporting tool for the loadgen server.
 //
 // created: Thu Jul 18 15:54:12 2013
-// last saved: <2013-July-24 15:54:14>
+// last saved: <2013-July-31 12:26:22>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -21,8 +21,7 @@ var assert = require('assert'),
     restify = require('restify'),
     q = require ('q'),
     fs = require('fs'),
-    filename = "model.json",
-    model = JSON.parse(fs.readFileSync(filename, "utf8")),
+    filename, model, 
     theJob, promise, requests, s, 
     urlPathPrefix = '/dino/loadgen1',
     i, j, L,
@@ -88,7 +87,24 @@ function promisifyRequest(req) {
 }
 
 
-console.log('=============================================\n1. create a job');
+filename = process.argv.slice(2);
+
+if ( ! filename) {
+  console.log('specify a filename.');
+  process.exit(1);
+}
+else {
+  filename = filename[0];
+  if ( ! fs.existsSync(filename)) {
+    console.log('that file does not exist.');
+    process.exit(1);
+  }
+}
+
+console.log('=============================================\n1. read the file');
+model = JSON.parse(fs.readFileSync(filename, "utf8"));
+
+console.log('=============================================\n2. create a job');
 // the job entity consists of a subset of the job in the model.json file. 
 theJob = {
   defaultProperties : model.defaultProperties, 

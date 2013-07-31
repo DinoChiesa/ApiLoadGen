@@ -1,0 +1,81 @@
+{
+  "name": "job2",
+  "description": "Exercises APIs exposed by iControl",
+  "defaultProperties": {
+    "scheme": "https",
+    "host": "demo18-test.apigee.net",
+    "headers" : {
+      "Accept" : "application/json"
+    }
+  },
+
+  "loadprofiles" : [{ 
+    "name" : "loadprofile1", 
+    "perHourCounts" : [
+      44, 35, 40, 36, 27, 40, 40, 54, 
+      57, 62, 54, 61, 73, 70, 53, 50, 
+      47, 62, 74, 88, 83, 77, 70, 51
+    ] 
+  }], 
+
+  "sequences" : [
+    {
+      "description" : "login",
+      "name" : "seqLogin",
+      "iterations" : 1,
+      "requests" : [ {
+        "type" : "request",
+        "name": "login",
+        "pathSuffix" : "/v1/ictrl/login",
+        "method" : "post",
+        "headers" : {
+          "content-type" : "application/json"
+        },
+        "payload" : {
+          "username":"test",
+          "password":"password"
+        }, 
+        "delayBefore" : 0,
+        "extracts" : [
+          {
+            "description" : "extract the login token",
+            "fn" : "function(obj) {return obj.login.token;}",
+            "valueRef" : "oauth_bearer_token"
+          }, 
+          {
+            "description" : "extract the user and site hrefs",
+            "fn" : "function(obj) {var re1=new Regexp('^/[^/]+/[^/]+(/.*)$'), m1,m2; m1=re1.exec(obj.login.user.href); m2=re1.exec(obj.login.site.href); return {user:m1[1],site:m2[1]};}",
+            "valueRef" : "hrefs"
+          }
+        ]
+      }]
+    },
+    {
+      "type" : "sequence",
+      "name" : "seqQuery1",
+      "description" : "query user item (self)",
+      "iterations" : "1",
+      "requests" : [ 
+        {
+          "name" : "retrieveUser",
+          "pathSuffix" : "/v1/ictrl/{hrefs.user}",
+          "method" : "get",
+          "headers" : {
+            "authorization" : "Bearer {oauth_bearer_token}"
+          }, 
+          "delayBefore" : 10
+        },
+        {
+          "name" : "retrieveSite",
+          "description" : "retrieve the site",
+          "pathSuffix" : "/v1/ictrl/{hrefs.site}",
+          "method" : "get",
+          "headers" : {
+            "authorization" : "Bearer {oauth_bearer_token}"
+          }, 
+          "delayBefore" : 10
+        }
+      ]
+    }
+  ]
+}
