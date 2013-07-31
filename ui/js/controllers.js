@@ -153,6 +153,9 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
       })
       .error(function(data, status, headers, config) {
         log.write('stop failed...' + JSON.stringify(data));
+        if (data.message == "that job is not currently running") {
+          job.status = 'stopped';
+        }
       });
   };
 
