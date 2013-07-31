@@ -1,0 +1,16 @@
+<div class="popover-content">
+<!--
+    for some reason if I include these, the datepicker control
+    fails. It gets the values of these attributes, butwhen trying
+    to validate the values, it fails. Somehow.
+
+    Leaving them out, they default to something nice.
+
+              day-format='dd'
+              year-format='yyyy'
+              day-header-format='EEE'
+-->
+  <datepicker ng-model="$parent.$parent.entity.theDate"
+              show-weeks="false"
+              starting-day="0"></datepicker>
+</div>

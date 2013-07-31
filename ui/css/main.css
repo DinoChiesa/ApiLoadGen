@@ -1,0 +1,63 @@
+div.log {
+  padding:0 2px 0 4px;
+  font-size:0.8em;
+  float:right;
+  width:28%;
+  max-height:94%;
+  overflow:scroll;
+  border:1px Grey dotted;
+}
+div.container {
+  width:67%;
+  float:left;
+}
+tr { border-bottom: 1px dotted grey;}
+td { padding: 1px 8px;}
+table { margin: 2px 0 18px 0;}
+td input[type="checkbox"] { margin: -2px 0 0 0;}
+
+/* the edit-in-place directive displays either a span */
+/* or an input element, depending on the active class. */
+.edit-in-place > span {
+  cursor: pointer;
+}
+
+.edit-in-place > input,
+.edit-in-place > textarea {
+  display: none;
+}
+
+.edit-in-place.active > span {
+  display: none;
+}
+
+.edit-in-place.active > input,
+.edit-in-place.active > textarea {
+  display: inline-block;
+}
+
+/* For some reason input-prepend makes font-size 0px. ? */
+/* This causes.. the labels on the days for a datepicker */
+/* to be not displayed. ?? */
+/* AngularJS and UI-bootstrap are still pretty immature. */
+div.input-prepend div.popover-inner thead > tr > th {
+  font-size: 14px; /* not 0px! */
+}
+
+div.datechooser1 div.popover-inner tbody > tr > td > button.btn {
+  /* padding:2px 8px; */
+  width:100%;
+}
+div.datechooser1 div.popover-inner tbody > tr > td  {
+  padding:0px;
+  width:32px;
+}
+div.datechooser1 > div.popover  {
+  width:286px;
+  height:286px;
+}
+
+/* ------------------------------------------------------ */
+table.tmain > tbody > tr > td > select {
+  margin-bottom:0px;
+}

@@ -1,0 +1,104 @@
+<div class="hero-unit" style='padding:22px 32px 32px 32px;'>
+  <h2 style='margin-top:-2px;'>Job Definition Tool</h2>
+
+  <p style='font-size:10pt;line-height:12pt;'>This tool lets you define,
+    monitor, and manage jobs for the load generator service. It stores
+    definitions into App Services, then lets you control those jobs from
+    this UI.
+  </p>
+
+  <div class="btn-group" ng-show="securityContext.checked && !securityContext.access_token">
+    <button class="btn btn-primary" ng-click="openLoginDialog()">Sign in</button> &nbsp;
+    <button class="btn btn-info" ng-click="openRegisterDialog()">Register</button>
+  </div>
+
+
+  <div ng-show="securityContext && securityContext.access_token"
+       style='margin-left:10px;'>
+    <p>You are logged in as: {{securityContext.user.username}}
+      <button class="btn btn-warning" ng-click="logout()">Sign out</button>
+    </p>
+  <h3>Jobs: {{getTotalRecords()}}</h3>
+
+  <table class='unstyled tmain'>
+    <tr>
+      <td/>
+      <td/>
+      <td ng-click='setSort($event)'>Name</td>
+      <td ng-click='setSort($event)'>Desc</td>
+      <td ng-click='setSort($event)'>id</td>
+      <td ng-click='setSort($event)'>details</td>
+      <td>&nbsp;</td>
+    </tr>
+
+    <tbody ng-repeat="item in jobRecords | orderBy:itemNormalizationFunction:sortReverse">
+    <tr>
+      <td>
+        <a class="btn btn-mini" ng-click="startJob(item,$event)">
+          <i class="icon-play icon-black"></i></a>
+      </td>
+      <td>
+        <a class="btn btn-mini" ng-click="stopJob(item,$event)">
+          <i class="icon-stop icon-black"></i></a>
+      </td>
+      <td>
+        <div edit-in-place="item.name"
+             edit-width='94px'
+             on-save="updateItemProp(value,previousValue,item,'name')"></div>
+      </td>
+      <td>
+        <div edit-in-place="item.description"
+             edit-width='314px'
+             on-save="updateItemProp(value,previousValue,item,'description')"></div>
+      </td>
+      <td><span class='foo'>{{item.uuid}}</span></td>
+      <td>
+        <a class="btn btn-mini" ng-click="toggleDetails(item,$event)">
+          <i class="icon-plus icon-black"></i></a>
+      </td>
+      <td>
+        <a class="btn btn-mini btn-danger" ng-click="deleteItem(item)">
+          <i class="icon-remove icon-white"></i></a>
+      </td>
+    </tr>
+
+    <tr ng-show='wantDetails(item)' style='font-size:9pt;'>
+      <td/>
+      <td colspan='6' style='border:1px dotted Grey;'>
+        <table>
+          <tbody ng-repeat="seq in item.sequences">
+            <tr>
+              <td colspan='2'>{{seq.name}}</td>
+              <td colspan='2'>iterations: {{seq.iterations}}</td>
+            </tr>
+            <tr ng-repeat="req in seq.requests">
+              <td/>
+              <td>{{req.name}}</td>
+              <td>{{req.method}}</td>
+              <td>{{req.pathSuffix}}</td>
+              <td>
+                <table>
+                  <tbody ng-repeat="ext in req.extracts">
+                    <tr><td>{{ext.description}}</td></tr>
+                    <tr><td>{{ext.fn}}</td></tr>
+                    <tr><td>store into: {{ext.valueRef}}</td></tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+
+    </tbody>
+  </table>
+
+  <form class='form-horizontal'>
+    <input type='text' ng-model='newJobName' style='width:140px;' ng-model-instant>
+    <input type='text' ng-model='newJobDescrip' style='width:320px;' ng-model-instant>
+    <button class='btn' ng-click='addJob()'>
+      <i class='icon-plus'></i> Add</button>
+  </form>
+  </div>
+</div>
