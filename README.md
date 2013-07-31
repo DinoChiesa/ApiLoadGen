@@ -287,10 +287,10 @@ case running 60 of those per hour is impractical. The way it works is, the
 server divides the time in an hour by the number of times to run the job. This
 give the interval on which to invoke one job.
 
-If you do not add a load profile to a job, the server defaults to
-running the job N times per hour. Currently N is 30, so such a job runs
-every 2 minutes, all day long. This will work but it won't give you a
-very nice analytics load chart.
+If you do not add a load profile to a job, the server defaults to running the
+job N times per hour. Currently N is 60, so such a job runs once every 60
+seconds, all day long. This will work but it won't give you a very nice
+analytics load chart, because load does not vary over itme.
 
 
 Design Notes
@@ -333,7 +333,7 @@ each asynchronous outbound http request.
 "Starting a job" implies kicking off this chain of promises, and storing
 the jobid and its timeout object in an in memory hashtable called
 "activeJobs". Stopping a job involves cancelling the timeout associated
-to the given jobid.
+to the given jobid. There's a race condition here. 
 
 
 Operations Notes
@@ -358,3 +358,4 @@ Bugs
 - starting a job with a non-existent job id results in {"message":"ok"} response. Expected: 400 {"message":"no such job"}
 - all requests in all sequences included in a job must point to the same API server. 
 - there's a glaring race condition when stopping jobs; if you request a stop while a job is running, it will be ignored. 
+- the angularjs client app connects directly to App Services to authenticate. It should authn through the loadgen server. (not implemented yet)

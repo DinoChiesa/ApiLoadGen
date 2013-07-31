@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-31 10:53:12>
+// last saved: <2013-July-31 12:05:04>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -323,8 +323,9 @@ function resolveNumeric(input) {
 function evalTemplate(ctx, code) {
   var src = '(function (', c = 0, f, values = [], result,
       extractContext = ctx.state.extracts;
+  // TODO: cache this? 
+  // create the fn signature
   for (var prop in extractContext) {
-
     if (extractContext.hasOwnProperty(prop)) {
       if (c > 0) {src += ',';}
       src += prop;
@@ -334,10 +335,9 @@ function evalTemplate(ctx, code) {
   }
   src += '){return ' + code + ';})';
   try {
-    //console.log('evaluating: ' + src);
     f = eval(src);
+    // call the function with all its arguments
     result = f.apply(null, values);
-    //console.log('result: ' + result);
   }
   catch (exc1) {
     r = null;
@@ -345,9 +345,11 @@ function evalTemplate(ctx, code) {
   return result;
 }
 
+
+
+// expandEmbeddedTemplates: walks through an object, replacing each embedded
+// template as appropriate.
 function expandEmbeddedTemplates(ctx, obj) {
-  // walks through an object, replacing each embedded template
-  // as appropriate.
   var re = new RegExp('(.*){(.+)}(.*)'), newObj = {}, match,
       type = Object.prototype.toString.call(obj), x, i;
   if (type === "[object Array]") {
@@ -359,7 +361,6 @@ function expandEmbeddedTemplates(ctx, obj) {
     }
   }
   else if (type === "[object Object]") {
-
     for (var prop in obj) {
       if (obj.hasOwnProperty(prop)) {
         type = Object.prototype.toString.call(obj[prop]);
@@ -386,6 +387,7 @@ function expandEmbeddedTemplates(ctx, obj) {
           newObj[prop] = expandEmbeddedTemplates(ctx, obj[prop]);
         }
         else {
+          // no replacement
           newObj[prop] = obj[prop];
         }
       }
@@ -557,7 +559,7 @@ function runJob(context) {
   if (state.sequence === state.S) {
     // terminate
     state.sequence = 0;
-    return q.resolve(context).then(setWakeup);
+    return q.resolve(context).then(setWakeup, trackFailure);
   }
   else {
     // reset counts and fall through
@@ -572,7 +574,7 @@ function runJob(context) {
   }
 
   // if we arrive here we're doing a request, implies an async call
-  p = q.resolve(context).then(invokeOneRequest);
+  p = q.resolve(context).then(invokeOneRequest, trackFailure);
 
   // sleep if necessary
   sequence = job.sequences[state.sequence];
@@ -580,7 +582,7 @@ function runJob(context) {
     if (sequence.delayBetweenIterations) {
       p = p.then(function(c) {
         sleep.usleep(resolveNumeric(sequence.delayBetweenIterations) * 1000);
-        return c; // for chaining
+        return c; // context, for chaining
       });
     }
   }
@@ -607,7 +609,7 @@ function initializeJobRunAndKickoff(context) {
       if (context.state.error.statusCode === 404) {
         return q.resolve(context); 
       }
-      // get a new client next time, attempt to recover.
+      // else, get a new client next time, and attempt to recover.
       delete context.modelConnection.client;
       return q.resolve(context).then(setWakeup); 
     }
@@ -628,10 +630,11 @@ function initializeJobRunAndKickoff(context) {
   };
 
   return q.resolve(context)
-    .then(runJob);
+    .then(runJob, trackFailure);
 }
 
 
+// setWakeup - schedule the next wakeup for a job, after it has completed. 
 function setWakeup(context) {
   var jobid,
       initialExContext = context.initialExtractContext,
@@ -658,7 +661,7 @@ function setWakeup(context) {
   runsPerHour = (context.model.jobs &&
                  context.model.jobs[0].loadprofile &&
                  context.model.jobs[0].loadprofile[currentHour]) ?
-    context.model.jobs[0].loadprofile[currentHour] : 30; // default, every 2 mins
+    context.model.jobs[0].loadprofile[currentHour] : 60; // default, every 1 mins
 
   sleepTimeInMs =
     Math.floor(oneHourInMs / runsPerHour) - durationOfLastRun;
@@ -666,13 +669,20 @@ function setWakeup(context) {
   if (sleepTimeInMs < 30000) { sleepTimeInMs = 30000; }
 
   log.write('doing ' + runsPerHour + ' runs per hour');
-  log.write('sleep for ' + sleepTimeInMs + 'ms');
-  //log.write('start at ' + now.toString());
+  log.write('sleep ' + sleepTimeInMs + 'ms');
   log.write('will wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
 
   activeJobs[jobid] =
     setTimeout(function () {
       var startMoment = new Date().valueOf();
+      // // diagnose intermittent ECONNRESET errors when contacting App Services
+      // if (context.modelConnection) {
+      //   console.log('modelConnection: { authz: ' + context.modelConnection.authz + ',\n' +
+      //             '  client: ' + context.modelConnection.client.toString() + '}');
+      // }
+      // else {
+      //   console.log('NO modelConnection?');
+      // }
       q.resolve({jobid:jobid, modelConnection: context.modelConnection})
         .then(retrieveOneJob)
         .then(retrieveLoadProfileForJob)
@@ -697,7 +707,7 @@ server.use(restify.queryParser());
 server.use(restify.fullResponse()); // I think reqd for CORS success
 
 function unknownMethodHandler(req, res) {
-  // handle CORS?
+  // handle CORS
   if (req.method.toLowerCase() === 'options') {
     log.write('on OPTIONS, origin: ' + req.headers.origin);
     //log.write('     request-hdrs: ' + req.headers['Access-Control-Request-Headers']);
