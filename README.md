@@ -178,107 +178,152 @@ Each of these steps requires an HTTP REST call to App Services. Loadgen
 wraps that storage model, though, so a loadgen client can simply post a
 complete job definition with all dependent objects composed into a
 single object graph to the loadgen server, and the loadgen server will
-decompose that object and store it into App Services. 
+decompose that object and store it into App Services. IN THEORY.  Currently this is not yet implemented. 
 
+There is a command line tool that loads jobs into App Services: etl1.js
 
-In more detail:
-----------------------
+To use it, specify the job definition in json format, in a text file. 
+Then run the etl1.js script.  It will create a new job in the store. 
 
-This is all wrong, pay no attention to this. 
-Create a job like this:
-
-`POST /jobs`
-
-with this as a payload
+The job definition should look something like this example: 
 
     {
-      "type": "job",
+      "name": "job2",
+      "description": "Exercise APIs exposed by Sonoa",
       "defaultProperties": {
         "scheme": "https",
-        "host": "cheeso-test.apigee.net",
-        "headers": {
-          "Accept": "application/json"
+        "host": "demo18-test.apigee.net",
+        "headers" : {
+          "Accept" : "application/json"
         }
       },
-      "description": "Whatever you like here"
-    }
 
-In the response you will get back a uuid. This identifies the job.
+      "loadprofiles" : [{ 
+        "name" : "loadprofile1", 
+        "perHourCounts" : [
+          44, 35, 40, 36, 27, 40, 40, 54, 
+          57, 62, 54, 61, 73, 70, 53, 50, 
+          47, 62, 74, 88, 83, 77, 70, 51
+        ] 
+      }], 
 
-
-Add Sequences to a job like this:
-
-`POST /jobs/{job-id}/includes/sequences`
-
-with this as a payload
-
-    {
-      "type": "sequence",
-      "name": "seqLogin",
-      "description": "login",
-      "iterations": "1"
-    }
-
-Add 1 or more sequences, and you get a sequence id for each one.
-Then add 1 or more requests to each sequence, like this:
-
-`POST /jobs/{job-id}/includes/{sequence-id}/references/requests`
-
-    {
-      "type": "request",
-      "name": "login",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "method": "post",
-      "pathSuffix": "/v1/todolist/token",
-      "payload": {
-        "grant_type": "password",
-        "username": "Himself",
-        "password": "HappinessPervades"
-      },
-      "delayBefore": "0",
-      "extracts": [
+      "sequences" : [
         {
-          "description": "extract the access token",
-          "fn": "function(obj) {return obj.access_token;}",
-          "valueRef": "oauth_bearer_token"
+          "description" : "login",
+          "name" : "seqLogin",
+          "iterations" : 1,
+          "requests" : [ {
+            "type" : "request",
+            "name": "login",
+            "pathSuffix" : "/v1/ictrl/login",
+            "method" : "post",
+            "headers" : {
+              "content-type" : "application/json"
+            },
+            "payload" : {
+              "username":"test",
+              "password":"password"
+            }, 
+            "delayBefore" : 0,
+            "extracts" : [
+              {
+                "description" : "extract the login token",
+                "fn" : "function(obj) {return obj.login.token;}",
+                "valueRef" : "oauth_bearer_token"
+              }, 
+              {
+                "description" : "extract the user and site hrefs",
+                "fn" : "function(obj) {var re1=new Regexp('^/[^/]+/[^/]+(/.*)$'), m1,m2; m1=re1.exec(obj.login.user.href); m2=re1.exec(obj.login.site.href); return {user:m1[1],site:m2[1]};}",
+                "valueRef" : "hrefs"
+              }
+            ]
+          }]
+        },
+        {
+          "type" : "sequence",
+          "name" : "seqQuery1",
+          "description" : "query user item (self)",
+          "iterations" : "1",
+          "requests" : [ 
+            {
+              "name" : "retrieveUser",
+              "pathSuffix" : "/v1/ictrl/{hrefs.user}",
+              "method" : "get",
+              "headers" : {
+                "authorization" : "Bearer {oauth_bearer_token}"
+              }, 
+              "delayBefore" : 10
+            },
+            {
+              "name" : "retrieveSite",
+              "description" : "retrieve the site",
+              "pathSuffix" : "/v1/ictrl/{hrefs.site}",
+              "method" : "get",
+              "headers" : {
+                "authorization" : "Bearer {oauth_bearer_token}"
+              }, 
+              "delayBefore" : 10
+            }
+          ]
         }
       ]
     }
 
-The "extracts" property defines a post-request step that can extract information from the payload or response headers. The fn property of that object should be the text source of a compilable JavaScript function. The valueRef contains the name of the reference variable to hold the extracted value.
 
-This then can be referenced later in replacement templates for inputs to subsequent requests.  For example, a subsequent request could use this:
+
+Some additional details:
+----------------------
+
+The extracts, payload, and delayBefore are all optional parts of a request.  The
+payload makes sense only for a PUT or POST. It's always JSON.  The extracts is
+an array of functions, specified in plaintext. These functions get evaluated on
+the response body received for the request, and the result of each function is
+stored in a named "context variable".  The descrition for the extract is just
+for documentation purposes.
+
+An extract like this:
 
     {
-      "type" : "request",
-      "name" : "retrieveItems",
-      "pathSuffix" : "/v1/todolist/users/me/owns/items",
-      "method" : "get",
+      "description" : "extract the login token",
+      "fn" : "function(obj) {return obj.login.token;}",
+      "valueRef" : "login_token"
+    }, 
+
+...when given a response payload like this: 
+
+    { login: { token: "AAABBBCCC" } } 
+
+...will extract the value AAABBBCCC and insert it into a context variable called
+login_token. This variable will then be available for use in the headers
+or payloads of subsequent requests in the sequence or the requests of subsequent sequences..
+
+To insert the values of these context variables into the headers or payloads of
+subsequent outbound requests, specify the variable name in curly-braces, like this:
+
       "headers" : {
-        "authorization" : "Bearer {oauth_bearer_token}"
-      }
-    }
+        "authorization" : "Bearer {login_token}"
+      }, 
 
-... and the resulting header sent in the outbound request would include the bearer token extracted from the previous "login" request.
+...or
+
+      "payload" : {
+        "token":"{login_token}",
+        "otherStuff":"ABCDEF"
+      }, 
 
 
-If you want the load rate to vary over time, you need to add a load profile to
+If you want the request rate to vary over time, you need to specify a load profile in
 the job. A load profile is very simply, a list of numbers specifying the target
 number of job runs per hour, for hours 0..24.
 
 Add a load profile to a job like this:
 
-`POST /jobs/{job-id}/uses/loadprofiles`
-
-with something like this as a payload:
-
     {
-      "type": "loadprofile",
-      "perHourCounts": [44, 35, 40, 36, 27, 40, 40, 54, 57, 62, 54, 61, 73, 70, 53, 50, 47, 62, 74, 88, 83, 77, 70, 51]
+      "name": "myloadprofile",
+      "perHourCounts": [44, 35, 40, 36, 27, 40, 40, 
+      54, 57, 62, 54, 61, 73, 70, 53, 50, 
+      47, 62, 74, 88, 83, 77, 70, 51]
     }
-
 
 The array called `perHourCounts` should be the number of times the job should
 run per hour, for each hour from 0 to 23. Be thoughtful about choosing these
@@ -291,6 +336,7 @@ If you do not add a load profile to a job, the server defaults to running the
 job N times per hour. Currently N is 60, so such a job runs once every 60
 seconds, all day long. This will work but it won't give you a very nice
 analytics load chart, because load does not vary over itme.
+
 
 
 Design Notes
@@ -354,8 +400,10 @@ Bugs
 - OPTIONS and HEAD are not yet supported as verbs in the requests that comprise a job
 - The settings for the job store are hardcoded to an open App Services app under my personal account.
 - The companion UI to manage job definitions is pretty limited. 
-- Currently no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.
+- Currently there is no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.
 - starting a job with a non-existent job id results in {"message":"ok"} response. Expected: 400 {"message":"no such job"}
-- all requests in all sequences included in a job must point to the same API server. 
-- there's a glaring race condition when stopping jobs; if you request a stop while a job is running, it will be ignored. 
+- all requests in all sequences included in a job must point to the same API server. This is an unnecessary restriction.
+- there's a glaring race condition when stopping jobs; if you request a stop while a job is in-process (and not waiting), it will be ignored. 
 - the angularjs client app connects directly to App Services to authenticate. It should authn through the loadgen server. (not implemented yet)
+- the extracts get access to only the response body. Should also be able to access response headers.
+- Does not handle XML requests or responses, or anything non-JSON
