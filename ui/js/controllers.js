@@ -111,6 +111,15 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
     });
   };
 
+  $scope.toggleJobStatus = function(item, $event) {
+    if (item.status == 'running') {
+      $scope.stopJob(item, $event);
+    }
+    else {
+      $scope.openInitialContextDialog(item, $event);
+    }
+  };
+
   $scope.openInitialContextDialog = function(item, $event) {
     $scope.initialContextDialogOpts.resolve.title = function() { 
       return 'Initial Context: ' + item.name; 
@@ -121,6 +130,35 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
         $scope.startJob(item, result.payload); 
       }
     });
+  };
+
+  $scope.startJob = function (job, payload) {
+    //   POST /jobs/{job-id}?action=start
+    $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=start', payload)
+      .success(function(data) {
+        log.write('start: ' + JSON.stringify(data));
+        job.status = 'running';
+      })
+      .error(function(data, status, headers, config) {
+        log.write('start failed...' + JSON.stringify(data));
+      });
+  };
+
+  $scope.stopJob = function (job, $event) {
+    //   POST /jobs/{job-id}?action=stop
+    $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=stop')
+      .success(function(data) {
+        log.write('stop: ' + JSON.stringify(data));
+        job.status = 'stopped';
+      })
+      .error(function(data, status, headers, config) {
+        log.write('stop failed...' + JSON.stringify(data));
+      });
+  };
+
+  $scope.getJobCssClass = function (job) {
+    if (job.status === 'running') { return 'icon-stop';}
+    return 'icon-play';
   };
 
   $scope.logout = function() {
@@ -314,29 +352,6 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
 
     $scope.newJobName = '';
   };
-
-  $scope.startJob = function (job, payload) {
-    //   POST /jobs/{job-id}?action=start
-    $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=start', payload)
-      .success(function(data) {
-        log.write('start: ' + JSON.stringify(data));
-      })
-      .error(function(data, status, headers, config) {
-        log.write('start failed...' + JSON.stringify(data));
-      });
-  };
-
-  $scope.stopJob = function (job, $event) {
-    //   POST /jobs/{job-id}?action=stop
-    $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=stop')
-      .success(function(data) {
-        log.write('stop: ' + JSON.stringify(data));
-      })
-      .error(function(data, status, headers, config) {
-        log.write('stop failed...' + JSON.stringify(data));
-      });
-  };
-
 
 
   $scope.itemNormalizationFunction = function(item) {

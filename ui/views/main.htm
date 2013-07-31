@@ -34,12 +34,14 @@
     <tbody ng-repeat="item in jobRecords | orderBy:itemNormalizationFunction:sortReverse">
     <tr>
       <td>
-        <a class="btn btn-mini" ng-click="openInitialContextDialog(item,$event)">
-          <i class="icon-play icon-black"></i></a>
+        <a class="btn btn-mini" ng-click="toggleJobStatus(item,$event)">
+          <i class="{{getJobCssClass(item)}} icon-black"></i></a>
       </td>
       <td>
+<!--
         <a class="btn btn-mini" ng-click="stopJob(item,$event)">
           <i class="icon-stop icon-black"></i></a>
+-->
       </td>
       <td>
         <div edit-in-place="item.name"
