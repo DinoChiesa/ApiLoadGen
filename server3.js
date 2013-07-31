@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-31 09:20:50>
+// last saved: <2013-July-31 10:53:12>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -394,7 +394,6 @@ function expandEmbeddedTemplates(ctx, obj) {
   return newObj;
 }
 
-
 // ==================================================================
 
 function invokeOneRequest(context) {
@@ -412,6 +411,7 @@ function invokeOneRequest(context) {
 
   log.write('invokeOneRequest');
 
+  // 1. initialize the restclient as necessary
   if (state.job === 0 && state.request === 0 &&
       state.sequence === 0 && state.iteration === 0) {
         // initialize restify client
@@ -424,6 +424,7 @@ function invokeOneRequest(context) {
   }
   client = state.restClient;
 
+  // 2. delay as appropriate
   if (req.delayBefore) {
     p = p.then(function(ctx){
       sleep.usleep(req.delayBefore * 1000);
@@ -431,6 +432,7 @@ function invokeOneRequest(context) {
     });
   }
 
+  // 3. evaluate the pathsuffix if required. 
   if (match) {
     // The pathsuffix includes a replacement string.
     // Must evaluate the replacement within the promise chain.
@@ -440,7 +442,7 @@ function invokeOneRequest(context) {
     });
   }
 
-  // inject custom headers...
+  // 4. inject any custom headers for this request
   if (req.headers) {
     // set a new headerInjector for our purpose
     //console.log('r[' + r.uuid + '] HAVE HEADERS');
@@ -468,6 +470,7 @@ function invokeOneRequest(context) {
     });
   }
 
+  // 5. actually do the http call, and the subsequent extracts
   p = p.then(function(ctx) {
     var deferredPromise = q.defer(),
         method = req.method.toLowerCase(),
@@ -478,8 +481,8 @@ function invokeOneRequest(context) {
             log.write(e);
           }
           else if (req.extracts && req.extracts.length>0) {
-            // cache the extract functions
-            //if ( ! ctx.state.extracts) { ctx.state.extracts = {}; }
+            // cache the eval'd extract functions
+            // if ( ! ctx.state.extracts) { ctx.state.extracts = {}; }
             for (i=0, L=req.extracts.length; i<L; i++) {
               ex = req.extracts[i];
               if ( ! ex.compiledFn) {
@@ -494,14 +497,11 @@ function invokeOneRequest(context) {
               catch (exc1) {
                 ctx.state.extracts[ex.valueRef] = null;
               }
-              // console.log('extractContext: ' +
-              //             JSON.stringify(ctx.state.extracts[state.job], null, 2));
             }
           }
           ctx.state.request++;
           deferredPromise.resolve(ctx);
         };
-
 
     if (method === "post") {
       log.write('post ' + suffix);
@@ -517,13 +517,17 @@ function invokeOneRequest(context) {
       log.write('get ' + suffix);
       client.get(suffix, respHandler);
     }
+    else if (method === "delete") {
+      log.write('delete ' + suffix);
+      client.delete(suffix, respHandler);
+    }
     else {
-      assert.fail(r.method,"get|post|put", "unsupported method", "<>");
+      assert.fail(r.method,"get|post|put|delete", "unsupported method", "<>");
     }
     return deferredPromise.promise;
   });
 
-  // reset the headerInjector
+  // 6. reset the headerInjector
   p = p.then(function(ctx) { ctx.state.headerInjector = noop; return ctx;});
 
   return p;
@@ -595,8 +599,10 @@ function initializeJobRunAndKickoff(context) {
 
     // Something went wrong with the GET /jobs/{jobid} from the store.  If the
     // failure during retrieval of job information is temporary, then this case
-    // should continue with a setWakeup.  If the job has been removed and is no
-    // longer available (404), then the this case should stop. 
+    // should continue with a setWakeup; this will result in trying to retrieve
+    // the job definition again, after a little delay.  If the job has been
+    // removed and is no longer available in the store (404), then the this case
+    // should stop.
     if (context.state.error) {
       if (context.state.error.statusCode === 404) {
         return q.resolve(context); 
@@ -781,7 +787,7 @@ server.get('/jobs', function(req, res, next) {
     .done();
 });
 
-
+// start and stop jobs
 server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
             function(req, res, next) {
               var jobid = req.params.jobid,
