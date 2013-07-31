@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-26 10:16:24>
+// last saved: <2013-July-30 21:27:42>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -49,8 +49,7 @@ var restify = require('restify'),
     fiveMinutesInMs = 5 * 60 * 1000,
     modelSourceUrlPrefix = '/dino/loadgen1',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
-    reUuid = new RegExp(reUuidStr),
-    mClient;
+    reUuid = new RegExp(reUuidStr);
 
   function Log(id) { }
 
@@ -62,17 +61,26 @@ var restify = require('restify'),
   };
 
 
-function getModelClient() {
-  if ( ! mClient) {
-    mClient = restify.createJsonClient({
-      url: 'https://api.usergrid.com/',
-      headers: {
-        'Accept' : 'application/json'
-      }
-    });
+function getModelClient(inboundReq) {
+  var authz, client, hdrs = {
+      'Accept' : 'application/json'
+    };
+
+  if (inboundReq) {
+    authz = inboundReq.headers.authorization || inboundReq.headers.Authorization;
+    if (authz) {
+      hdrs.authorization = authz;
+    }
   }
-  return mClient;
+
+  client = restify.createJsonClient({
+    url: 'https://api.usergrid.com/',
+    headers: hdrs
+  });
+
+  return client;
 }
+
 
 function noop() {}
 
@@ -80,6 +88,18 @@ function getUuidFinder(uuid) {
   return function (elt, ix, a) {
     return (elt.uuid === uuid);
   };
+}
+
+
+function dumpRequest(req) {
+  var r = '';
+  // for (var prop in req) {
+  //   if (req.hasOwnProperty(prop)) {
+  //     r += 'req.' + prop + '\n';
+  //   }
+  // }
+  // return r;
+  return JSON.stringify(req.headers, null, 2);
 }
 
 
@@ -96,10 +116,11 @@ function logTransaction(e, req, res, obj, payload) {
 }
 
 
-function retrieveAllJobs() {
-  var deferredPromise = q.defer();
+function retrieveAllJobs(ctx) {
+  var deferredPromise = q.defer(), 
+      client = ctx.mClient;
   log.write('retrieveAllJobs');
-  getModelClient().get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
+  client.get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
     //logTransaction(e, httpReq, httpResp, obj);
     if (e) {
       deferredPromise.resolve({
@@ -109,6 +130,7 @@ function retrieveAllJobs() {
     }
     else {
       deferredPromise.resolve({
+        mClient: client, 
         state: {job:0, stage:'retrieve'},
         model: {jobs:obj.entities}
       });
@@ -119,9 +141,11 @@ function retrieveAllJobs() {
 
 
 function retrieveOneJob(ctx) {
-  var deferredPromise = q.defer();
-  log.write('retrieveOneJob(' +ctx.jobid + ')');
-  getModelClient().get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
+  var deferredPromise = q.defer(), 
+      client = ctx.mClient;
+
+  log.write('retrieveOneJob(' + ctx.jobid + ')');
+  client.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
     logTransaction(e, httpReq, httpResp, obj);
     if (e) {
       console.log('error: ' + JSON.stringify(e, null, 2));
@@ -132,6 +156,7 @@ function retrieveOneJob(ctx) {
     }
     else if (obj.entities && obj.entities[0]) {
       deferredPromise.resolve({
+        mClient: client, 
         state: {job:0, stage:'retrieve', jobid:ctx.jobid},
         model: {jobs:obj.entities}
       });
@@ -151,7 +176,8 @@ function retrieveRequestsForOneSequence(ctx) {
   return (function (context) {
     var deferred, s, url,
         state = context.state,
-        model = context.model;
+        model = context.model, 
+        client = context.mClient;
 
     // check for termination
     if (state.currentSequence == model.jobs[state.job].sequences.length) {
@@ -164,7 +190,7 @@ function retrieveRequestsForOneSequence(ctx) {
     url = modelSourceUrlPrefix + s.metadata.connections.references;
 
     log.write('retrieveRequestsForOneSequence');
-    getModelClient().get(url, function(e, httpReq, httpResp, obj) {
+    client.get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
       s.requests = obj.entities;
       state.currentSequence++;
@@ -181,6 +207,7 @@ function retrieveRequestsForOneSequence(ctx) {
 function retrieveLoadProfileForJob(ctx) {
   return (function (context) {
     var deferred,
+        client = context.mClient, 
         model = context.model,
         jobs = model.jobs,
         job = jobs ? jobs[0] : null,
@@ -197,7 +224,7 @@ function retrieveLoadProfileForJob(ctx) {
     url = modelSourceUrlPrefix +
       job.metadata.connections.uses + '?ql=' + encodeURIComponent(query);
 
-    mClient.get(url, function(e, httpReq, httpResp, obj) {
+    client.get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
       if (obj.entities && obj.entities[0]) {
         context.model.jobs[0].loadprofile = obj.entities[0].perHourCounts;
@@ -215,6 +242,7 @@ function retrieveLoadProfileForJob(ctx) {
 function retrieveSequencesForJob(ctx) {
   return (function (context) {
     var deferred,
+        client = context.mClient, 
         query = "select * where type = 'sequence'",
         state = context.state,
         model = context.model,
@@ -234,7 +262,7 @@ function retrieveSequencesForJob(ctx) {
     url = modelSourceUrlPrefix +
       j.metadata.connections.includes + '?ql=' + encodeURIComponent(query);
 
-    mClient.get(url, function(e, httpReq, httpResp, obj) {
+    client.get(url, function(e, httpReq, httpResp, obj) {
       //logTransaction(e, httpReq, httpResp, obj);
       if (e) {
         log.write('error: ' + JSON.stringify(e, null, 2));
@@ -624,7 +652,7 @@ function setWakeup(context) {
   activeJobs[jobid] =
     setTimeout(function () {
       var startMoment = new Date().valueOf();
-      q.resolve({jobid:jobid})
+      q.resolve({jobid:jobid, mClient:context.mClient})
         .then(retrieveOneJob)
         .then(retrieveLoadProfileForJob)
         .then(retrieveSequencesForJob)
@@ -644,6 +672,31 @@ function setWakeup(context) {
 
 server.use(restify.bodyParser({ mapParams: false })); // put post payload in req.body
 server.use(restify.queryParser());
+//server.use(restify.CORS());
+server.use(restify.fullResponse()); // I think reqd for CORS success
+
+function unknownMethodHandler(req, res) {
+  // handle CORS?
+  if (req.method.toLowerCase() === 'options') {
+    log.write('on OPTIONS, origin: ' + req.headers.origin);
+    //log.write('     request-hdrs: ' + req.headers['Access-Control-Request-Headers']);
+    log.write('     request-hdrs: ' + JSON.stringify(req.headers, null, 2));
+    // var allowedHeaders = ['Accept', 'Authorization', 'Origin', 'Referer', 
+    //                       'User-Agent', 'X-Requested-With'];
+    var allowedHeaders = ['Authorization','Content-Type','X-Requested-With'];
+    //if (res.methods.indexOf('OPTIONS') === -1) res.methods.push('OPTIONS');
+
+    res.header('Access-Control-Allow-Credentials', true);
+    res.header('Access-Control-Allow-Headers', allowedHeaders.join(', '));
+    res.header('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT');
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Max-Age', '60'); // delta seconds
+    return res.send(204);
+  }
+  return res.send(new restify.MethodNotAllowedError());
+}
+
+server.on('MethodNotAllowed', unknownMethodHandler);
 
 // server.post(new RegExp('^/(jobs|sequences|requests)$'), function(req, res, next) {
 //   // TODO: implement creation of new items
@@ -675,12 +728,30 @@ server.use(restify.queryParser());
 //   }
 // });
 
+server.get('/users/:userid', function(req, res, next) {
+  var client = getModelClient(req);
+  console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
+  log.write('outbound GET ' + req.url);
+  client.get(modelSourceUrlPrefix + req.url, function(e, httpReq, httpResp, obj) {
+    logTransaction(e, httpReq, httpResp, obj);
+    if (e || !obj.entities) {
+      res.send(httpResp.statusCode || 500, {status:'error'});
+    }
+    else {
+      res.send(obj);
+    }
+    return next();
+  });
+});
+
 server.get('/jobs/:jobid', function(req, res, next) {
   var jobid = req.params.jobid,
-      match = reUuid.exec(req.params.jobid);
+      match = reUuid.exec(req.params.jobid), 
+      client = getModelClient(req);
+
   if (match) {
     log.write('get job, job id: ' + req.params.jobid);
-    q.resolve({jobid:req.params.jobid})
+    q.resolve({jobid:req.params.jobid, mClient:client})
       .then(retrieveOneJob)
       .then(retrieveSequencesForJob)
       .then(function(ctx) {
@@ -699,8 +770,11 @@ server.get('/jobs/:jobid', function(req, res, next) {
 });
 
 server.get('/jobs', function(req, res, next) {
-  log.write('get jobs');
-  q.fcall(retrieveAllJobs)
+  var c = getModelClient(req);
+  log.write('GET jobs');
+  console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
+  q.resolve({mClient:c})
+    .then(retrieveAllJobs)
     .then(retrieveSequencesForJob)
     .then(function(ctx) {
       ctx.model.jobs.forEach(function (element, index, array){
@@ -718,16 +792,18 @@ server.get('/jobs', function(req, res, next) {
 server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
             function(req, res, next) {
               var jobid = req.params.jobid,
+                  c = getModelClient(req), 
                   match = reUuid.exec(jobid),
                   action = req.params.action,
                   timeoutId;
+              log.write('POST jobs/' + jobid + ' action=' + action);
               // console.log('params: ' + JSON.stringify(req.params, null, 2));
               // console.log('body: ' + JSON.stringify(req.body, null, 2));
 
               if (match) {
                 if (action == 'start') {
                   if ( ! activeJobs.hasOwnProperty(jobid)) {
-                    q.resolve({jobid:jobid})
+                    q.resolve({jobid:jobid, mClient:c})
                       .then(retrieveOneJob)
                       .then(function(ctx){
                         // this response gets sent while the job is running
