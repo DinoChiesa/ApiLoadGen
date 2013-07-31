@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-30 21:27:42>
+// last saved: <2013-July-31 09:20:50>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -61,15 +61,23 @@ var restify = require('restify'),
   };
 
 
-function getModelClient(inboundReq) {
+function getModelClient(param) {
   var authz, client, hdrs = {
-      'Accept' : 'application/json'
-    };
+    'Accept' : 'application/json'
+  };
 
-  if (inboundReq) {
-    authz = inboundReq.headers.authorization || inboundReq.headers.Authorization;
-    if (authz) {
-      hdrs.authorization = authz;
+  // This fn can be called with either an inbound request, or with a context.  The
+  // context contains a child 'modelConnection' while the inbound request contains a child
+  // called 'headers'.
+  if (param) {
+    if (param.modelConnection) {
+      hdrs.authorization = param.modelConnection.authz;
+    }
+    else if (param.headers) {
+      authz = param.headers.authorization || param.headers.Authorization;
+      if (authz) {
+        hdrs.authorization = authz;
+      }
     }
   }
 
@@ -112,27 +120,29 @@ function logTransaction(e, req, res, obj, payload) {
   if (res && res.statusCode) {
     console.log('\nresponse status: ' + res.statusCode);
   }
-  console.log('response body: ' + JSON.stringify(obj, null, 2) +'\n\n');
+  console.log('response body: ' + JSON.stringify(obj, null, 2) +'\n');
 }
 
 
 function retrieveAllJobs(ctx) {
   var deferredPromise = q.defer(), 
-      client = ctx.mClient;
+      client = ctx.modelConnection.client || getModelClient(ctx);
+
   log.write('retrieveAllJobs');
   client.get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
     //logTransaction(e, httpReq, httpResp, obj);
     if (e) {
       deferredPromise.resolve({
         state: {job:0, stage:'retrieve', error:e},
-        model: {jobs:{}}
+        model: {jobs:{}}, 
+        modelConnection: {authz:ctx.modelConnection.authz}
       });
     }
     else {
       deferredPromise.resolve({
-        mClient: client, 
         state: {job:0, stage:'retrieve'},
-        model: {jobs:obj.entities}
+        model: {jobs:obj.entities}, 
+        modelConnection: {client:client, authz:ctx.modelConnection.authz}
       });
     }
   });
@@ -142,7 +152,7 @@ function retrieveAllJobs(ctx) {
 
 function retrieveOneJob(ctx) {
   var deferredPromise = q.defer(), 
-      client = ctx.mClient;
+      client = ctx.modelConnection.client || getModelClient(ctx);
 
   log.write('retrieveOneJob(' + ctx.jobid + ')');
   client.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
@@ -151,33 +161,38 @@ function retrieveOneJob(ctx) {
       console.log('error: ' + JSON.stringify(e, null, 2));
       deferredPromise.resolve({
         state: {job:0, stage:'nojob', jobid:ctx.jobid, error:e},
-        model: {}
+        model: {}, 
+        modelConnection: { authz: ctx.modelConnection.authz }
+        // Leave modelConnection.client undefined.
+        // It will be re-initialized next time through. 
       });
     }
     else if (obj.entities && obj.entities[0]) {
       deferredPromise.resolve({
-        mClient: client, 
         state: {job:0, stage:'retrieve', jobid:ctx.jobid},
-        model: {jobs:obj.entities}
+        model: {jobs:obj.entities}, 
+        modelConnection: {authz: ctx.modelConnection.authz, client: client}
       });
     }
     else {
       console.log('non response? ' + JSON.stringify(obj, null, 2));
       deferredPromise.resolve({
         state: {job:0, stage:'nojob', jobid:ctx.jobid},
-        model: {}
+        model: {}, 
+        modelConnection: { authz: ctx.modelConnection.authz }
       });
     }
   });
   return deferredPromise.promise;
 }
 
+
 function retrieveRequestsForOneSequence(ctx) {
   return (function (context) {
     var deferred, s, url,
         state = context.state,
         model = context.model, 
-        client = context.mClient;
+        client = context.modelConnection.client;
 
     // check for termination
     if (state.currentSequence == model.jobs[state.job].sequences.length) {
@@ -207,7 +222,7 @@ function retrieveRequestsForOneSequence(ctx) {
 function retrieveLoadProfileForJob(ctx) {
   return (function (context) {
     var deferred,
-        client = context.mClient, 
+        client = context.modelConnection.client, 
         model = context.model,
         jobs = model.jobs,
         job = jobs ? jobs[0] : null,
@@ -242,7 +257,7 @@ function retrieveLoadProfileForJob(ctx) {
 function retrieveSequencesForJob(ctx) {
   return (function (context) {
     var deferred,
-        client = context.mClient, 
+        client = context.modelConnection.client, 
         query = "select * where type = 'sequence'",
         state = context.state,
         model = context.model,
@@ -587,7 +602,7 @@ function initializeJobRunAndKickoff(context) {
         return q.resolve(context); 
       }
       // get a new client next time, attempt to recover.
-      mClient = null;
+      delete context.modelConnection.client;
       return q.resolve(context).then(setWakeup); 
     }
     return q.resolve(context); 
@@ -637,7 +652,7 @@ function setWakeup(context) {
   runsPerHour = (context.model.jobs &&
                  context.model.jobs[0].loadprofile &&
                  context.model.jobs[0].loadprofile[currentHour]) ?
-    context.model.jobs[0].loadprofile[currentHour] : 12; // default
+    context.model.jobs[0].loadprofile[currentHour] : 30; // default, every 2 mins
 
   sleepTimeInMs =
     Math.floor(oneHourInMs / runsPerHour) - durationOfLastRun;
@@ -652,7 +667,7 @@ function setWakeup(context) {
   activeJobs[jobid] =
     setTimeout(function () {
       var startMoment = new Date().valueOf();
-      q.resolve({jobid:jobid, mClient:context.mClient})
+      q.resolve({jobid:jobid, modelConnection: context.modelConnection})
         .then(retrieveOneJob)
         .then(retrieveLoadProfileForJob)
         .then(retrieveSequencesForJob)
@@ -698,8 +713,8 @@ function unknownMethodHandler(req, res) {
 
 server.on('MethodNotAllowed', unknownMethodHandler);
 
-// server.post(new RegExp('^/(jobs|sequences|requests)$'), function(req, res, next) {
-//   // TODO: implement creation of new items
+// server.post('/jobs'), function(req, res, next) {
+//   // TODO: implement creation of new jobs
 //   res.send(201, {
 //     collection: req.params[0],
 //     id: Math.random().toString(36).substr(3, 8)
@@ -707,26 +722,6 @@ server.on('MethodNotAllowed', unknownMethodHandler);
 //   return next();
 // });
 //
-// server.get(new RegExp('^/(jobs|sequences|requests)$'), function(req, res, next) {
-//   if (req.params[0] === 'jobs') {
-//     q
-//       .fcall(retrieveAllJobs)
-//       .then(retrieveSequencesForEachJob)
-//       .then(function(ctx) {
-//         res.send(ctx.model.jobs);
-//         next();
-//         return true;
-//       })
-//       .done();
-//   }
-//   else {
-//     mClient.get(modelSourceUrlPrefix + '/' + req.params[0], function(e, httpReq, httpResp, obj) {
-//       //logTransaction(e, httpReq, httpResp, obj);
-//       res.send(obj.entities);
-//       return next();
-//     });
-//   }
-// });
 
 server.get('/users/:userid', function(req, res, next) {
   var client = getModelClient(req);
@@ -746,12 +741,11 @@ server.get('/users/:userid', function(req, res, next) {
 
 server.get('/jobs/:jobid', function(req, res, next) {
   var jobid = req.params.jobid,
-      match = reUuid.exec(req.params.jobid), 
-      client = getModelClient(req);
+      match = reUuid.exec(req.params.jobid);
 
   if (match) {
     log.write('get job, job id: ' + req.params.jobid);
-    q.resolve({jobid:req.params.jobid, mClient:client})
+    q.resolve({jobid:req.params.jobid, modelConnection:{authz:req.headers.authorization}})
       .then(retrieveOneJob)
       .then(retrieveSequencesForJob)
       .then(function(ctx) {
@@ -770,10 +764,9 @@ server.get('/jobs/:jobid', function(req, res, next) {
 });
 
 server.get('/jobs', function(req, res, next) {
-  var c = getModelClient(req);
   log.write('GET jobs');
   console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
-  q.resolve({mClient:c})
+  q.resolve({modelConnection:{authz:req.headers.authorization}})
     .then(retrieveAllJobs)
     .then(retrieveSequencesForJob)
     .then(function(ctx) {
@@ -792,7 +785,6 @@ server.get('/jobs', function(req, res, next) {
 server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
             function(req, res, next) {
               var jobid = req.params.jobid,
-                  c = getModelClient(req), 
                   match = reUuid.exec(jobid),
                   action = req.params.action,
                   timeoutId;
@@ -803,7 +795,7 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
               if (match) {
                 if (action == 'start') {
                   if ( ! activeJobs.hasOwnProperty(jobid)) {
-                    q.resolve({jobid:jobid, mClient:c})
+                    q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization}})
                       .then(retrieveOneJob)
                       .then(function(ctx){
                         // this response gets sent while the job is running
@@ -859,65 +851,6 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                 return next();
               }
             });
-
-
-// ** This isn't going to work because of the security on the /sequences
-// ** and /requests collections
-//
-// server.get(new RegExp('^/(jobs|sequences|requests)/([^/]+)$'), function(req, res, next) {
-//   var match = reUuid.exec(req.params[1]);
-//   console.log('looking at: ' + req.params[1]);
-//   if (match) {
-//     console.log('getting ' + req.url);
-//     mClient.get(modelSourceUrlPrefix + req.url, function(e, httpReq, httpResp, obj) {
-//       logTransaction(e, httpReq, httpResp, obj);
-//       res.send(obj.entities[0]);
-//       return next();
-//     });
-//   }
-//   else {
-//     res.send(400, {msg:'malformed uuid'});
-//     return next();
-//   }
-// });
-
-// server.get(new RegExp('^/jobs/('+reUuidStr+')/includes$'), function(req, res, next) {
-//   console.log('looking at: ' + req.params[0]);
-//   var match = reUuid.exec(req.params[0]);
-//   if (match) {
-//     mClient.get(modelSourceUrlPrefix + '/jobs/' + req.params[0] + '/includes', function(e, httpReq, httpResp, obj) {
-//       //logTransaction(e, httpReq, httpResp, obj);
-//       if (obj){
-//         res.send(obj.entities);
-//       }
-//       return next();
-//     });
-//   }
-//   else {
-//     res.send(400, {msg:'malformed uuid'});
-//     return next();
-//   }
-// });
-// 
-// 
-// server.get(new RegExp('^/jobs/('+reUuidStr+')/includes/('+reUuidStr+')/references$'), function(req, res, next) {
-//   var match0 = reUuid.exec(req.params[0]),
-//       match1 = reUuid.exec(req.params[1]);
-// 
-//   if (match0 && match1) {
-//     mClient.get(modelSourceUrlPrefix + req.url, function(e, httpReq, httpResp, obj) {
-//       //logTransaction(e, httpReq, httpResp, obj);
-//       if (obj){
-//         res.send(obj.entities);
-//       }
-//       return next();
-//     });
-//   }
-//   else {
-//     res.send(400, {msg:'malformed uuid'});
-//     return next();
-//   }
-// });
 
 // ------------------------------------------------------------------
 
