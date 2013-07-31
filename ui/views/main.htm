@@ -34,7 +34,7 @@
     <tbody ng-repeat="item in jobRecords | orderBy:itemNormalizationFunction:sortReverse">
     <tr>
       <td>
-        <a class="btn btn-mini" ng-click="startJob(item,$event)">
+        <a class="btn btn-mini" ng-click="openInitialContextDialog(item,$event)">
           <i class="icon-play icon-black"></i></a>
       </td>
       <td>

@@ -21,7 +21,8 @@ function Job(name, desc, defaultProps) {
 }
 
 function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile */ ) {
-  var dialogModel = {}, token, reUrl = new RegExp('https?://[^/]+(/.*)$'), httpConfig;
+  var dialogModel = {}, token, reUrl = new RegExp('https?://[^/]+(/.*)$'), 
+      httpConfig, initialContext = {};
 
   $scope.sortKey = 'created';
   $scope.sortReverse = false;
@@ -41,6 +42,21 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
       wantIdentity: function() { return true; },
       title: function() { return "unkown"; }}
   };
+
+
+  $scope.initialContextDialogOpts = {
+    backdrop: true,
+    keyboard: true,
+    backdropClick: false,
+    templateUrl: 'views/initial-context-dialog.htm',
+    controller: 'InitialContextDialogController',
+    // resolve is used to inject data into the controller for the dialog.
+    resolve: {
+      initialContext: function() { return angular.copy(initialContext); },
+      title: function() { return 'Initial Context'; }
+    }
+  };
+
 
   log.write('MainController');
   // check for existing, working token
@@ -71,7 +87,6 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
     $scope.securityContext.checked = true;
   }
 
-
   $scope.openRegisterDialog = function() {
     dialogModel = {};
     $scope.loginRegisterDialogOpts.resolve.title = function() { return "Register"; };
@@ -92,6 +107,18 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
     d.open().then(function(result){
       if(result) {
         login(result, initialRetrieve);
+      }
+    });
+  };
+
+  $scope.openInitialContextDialog = function(item, $event) {
+    $scope.initialContextDialogOpts.resolve.title = function() { 
+      return 'Initial Context: ' + item.name; 
+    };
+    var d = $dialog.dialog($scope.initialContextDialogOpts);
+    d.open().then(function(result){
+      if(result && result.payload) {
+        $scope.startJob(item, result.payload); 
       }
     });
   };
@@ -288,9 +315,9 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
     $scope.newJobName = '';
   };
 
-  $scope.startJob = function (job, $event) {
+  $scope.startJob = function (job, payload) {
     //   POST /jobs/{job-id}?action=start
-    $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=start')
+    $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=start', payload)
       .success(function(data) {
         log.write('start: ' + JSON.stringify(data));
       })
@@ -403,6 +430,18 @@ function LoginRegisterDialogController ($scope, dialog, dialogModel, title, want
     dialog.close();
   };
   $scope.login = function(result){
+    dialog.close(result);
+  };
+}
+
+
+function InitialContextDialogController ($scope, dialog, initialContext, title) {
+  $scope.initialContext = initialContext;
+  $scope.title = title;
+  $scope.cancel = function(){
+    dialog.close();
+  };
+  $scope.submit = function(result){
     dialog.close(result);
   };
 }
