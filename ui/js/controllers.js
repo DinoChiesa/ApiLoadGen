@@ -134,6 +134,7 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
 
   $scope.startJob = function (job, payload) {
     //   POST /jobs/{job-id}?action=start
+    if ( ! payload) { payload = {}; }
     $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=start', payload)
       .success(function(data) {
         log.write('start: ' + JSON.stringify(data));
@@ -460,6 +461,7 @@ function InitialContextDialogController ($scope, dialog, initialContext, title) 
     dialog.close();
   };
   $scope.submit = function(result){
+    if ( ! result ) {result = {payload:{}};}
     dialog.close(result);
   };
 }
