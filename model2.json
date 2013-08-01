@@ -1,8 +1,8 @@
 {
-  "name": "job2",
+  "name": "job3",
   "description": "Exercises APIs exposed by iControl",
   "defaultProperties": {
-    "scheme": "https",
+    "scheme": "http",
     "host": "demo18-test.apigee.net",
     "headers" : {
       "Accept" : "application/json"
@@ -10,7 +10,7 @@
   },
 
   "loadprofiles" : [{ 
-    "name" : "loadprofile1", 
+    "name" : "loadprofile3", 
     "perHourCounts" : [
       44, 35, 40, 36, 27, 40, 40, 54, 
       57, 62, 54, 61, 73, 70, 53, 50, 
@@ -21,7 +21,7 @@
   "sequences" : [
     {
       "description" : "login",
-      "name" : "seqLogin",
+      "name" : "seqLogin3",
       "iterations" : 1,
       "requests" : [ {
         "type" : "request",
@@ -33,7 +33,7 @@
         },
         "payload" : {
           "username":"test",
-          "password":"password"
+          "password":"display"
         }, 
         "delayBefore" : 0,
         "extracts" : [
@@ -44,7 +44,7 @@
           }, 
           {
             "description" : "extract the user and site hrefs",
-            "fn" : "function(obj) {var re1=new Regexp('^/[^/]+/[^/]+(/.*)$'), m1,m2; m1=re1.exec(obj.login.user.href); m2=re1.exec(obj.login.site.href); return {user:m1[1],site:m2[1]};}",
+            "fn" : "function(obj) {var re1=new RegExp('^/[^/]+/[^/]+(/.*)$'), m1,m2; m1=re1.exec(obj.login.user.href); m2=re1.exec(obj.login.site.href); return {user:m1[1],site:m2[1]};}",
             "valueRef" : "hrefs"
           }
         ]
@@ -52,13 +52,14 @@
     },
     {
       "type" : "sequence",
-      "name" : "seqQuery1",
-      "description" : "query user item (self)",
+      "name" : "seqQuery3",
+      "description" : "query the user and site items",
       "iterations" : "1",
       "requests" : [ 
         {
-          "name" : "retrieveUser",
-          "pathSuffix" : "/v1/ictrl/{hrefs.user}",
+          "name" : "retrieveUser3",
+          "description" : "query the user item",
+          "pathSuffix" : "/v1/ictrl{hrefs.user}",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -66,9 +67,9 @@
           "delayBefore" : 10
         },
         {
-          "name" : "retrieveSite",
+          "name" : "retrieveSite3",
           "description" : "retrieve the site",
-          "pathSuffix" : "/v1/ictrl/{hrefs.site}",
+          "pathSuffix" : "/v1/ictrl{hrefs.site}",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
