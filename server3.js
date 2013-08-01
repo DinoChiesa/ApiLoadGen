@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-31 12:05:04>
+// last saved: <2013-July-31 18:04:58>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -44,7 +44,7 @@ var restify = require('restify'),
     //   name: 'my_restify_application'
     // }),
     server = restify.createServer(),
-    activeJobs = {},
+    activeJobs = {}, pendingStop = {}, 
     oneHourInMs = 60 * 60 * 1000,
     fiveMinutesInMs = 5 * 60 * 1000,
     modelSourceUrlPrefix = '/dino/loadgen1',
@@ -156,7 +156,7 @@ function retrieveOneJob(ctx) {
 
   log.write('retrieveOneJob(' + ctx.jobid + ')');
   client.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
-    logTransaction(e, httpReq, httpResp, obj);
+    //logTransaction(e, httpReq, httpResp, obj);
     if (e) {
       console.log('error: ' + JSON.stringify(e, null, 2));
       deferredPromise.resolve({
@@ -300,7 +300,12 @@ function retrieveSequencesForJob(ctx) {
 // ==================================================================
 
 function trackFailure(e) {
-  log.write('failure: ' + e);
+  if (e) {
+    log.write('failure: ' + e);
+  }
+  else {
+    log.write('unknown failure?');
+  }
 }
 
 
@@ -323,6 +328,9 @@ function resolveNumeric(input) {
 function evalTemplate(ctx, code) {
   var src = '(function (', c = 0, f, values = [], result,
       extractContext = ctx.state.extracts;
+
+  // log.write('eval: ' + code);
+  // log.write('ctx: ' + JSON.stringify(extractContext, null, 2));
   // TODO: cache this? 
   // create the fn signature
   for (var prop in extractContext) {
@@ -414,15 +422,14 @@ function invokeOneRequest(context) {
   log.write('invokeOneRequest');
 
   // 1. initialize the restclient as necessary
-  if (state.job === 0 && state.request === 0 &&
-      state.sequence === 0 && state.iteration === 0) {
-        // initialize restify client
-        state.headerInjector = noop;
-        state.restClient = restify.createJsonClient({
-          url: job.defaultProperties.scheme + '://' + job.defaultProperties.host,
-          headers: job.defaultProperties.headers,
-          signRequest : function(r) { return state.headerInjector(r);}
-        });
+  if (state.job === 0 && state.request === 0 && state.sequence === 0 && state.iteration === 0) {
+    // initialize restify client
+    state.headerInjector = noop;
+    state.restClient = restify.createJsonClient({
+      url: job.defaultProperties.scheme + '://' + job.defaultProperties.host,
+      headers: job.defaultProperties.headers,
+      signRequest : function(r) { return state.headerInjector(r);}
+    });
   }
   client = state.restClient;
 
@@ -444,11 +451,10 @@ function invokeOneRequest(context) {
     });
   }
 
-  // 4. inject any custom headers for this request
+  // 4. conditionally set the header injector to inject any custom headers for
+  // this request. 
   if (req.headers) {
     // set a new headerInjector for our purpose
-    //console.log('r[' + r.uuid + '] HAVE HEADERS');
-
     p = p.then(function(ctx) {
       ctx.state.headerInjector = function (clientRequest) {
         // The header is mutable using the setHeader(name, value),
@@ -463,7 +469,7 @@ function invokeOneRequest(context) {
             else {
               value = req.headers[hdr];
             }
-            //console.log('setHeader(' + hdr + ',' + value + ')');
+            //log.write('setHeader(' + hdr + ',' + value + ')');
             clientRequest.setHeader(hdr, value);
           }
         }
@@ -475,7 +481,7 @@ function invokeOneRequest(context) {
   // 5. actually do the http call, and the subsequent extracts
   p = p.then(function(ctx) {
     var deferredPromise = q.defer(),
-        method = req.method.toLowerCase(),
+        method = (req.method)? req.method.toLowerCase() : "get", 
         respHandler = function(e, httpReq, httpResp, obj) {
           var i, L, ex;
           //logTransaction(e, httpReq, httpResp, obj);
@@ -495,9 +501,11 @@ function invokeOneRequest(context) {
               // actually invoke the compiled fn
               try {
                 ctx.state.extracts[ex.valueRef] = ex.compiledFn(obj);
+                log.write(ex.valueRef + ':=' + JSON.stringify(ctx.state.extracts[ex.valueRef]));
               }
               catch (exc1) {
                 ctx.state.extracts[ex.valueRef] = null;
+                log.write(ex.valueRef + ':= null (exception: ' + exc1 + ')');
               }
             }
           }
@@ -529,8 +537,13 @@ function invokeOneRequest(context) {
     return deferredPromise.promise;
   });
 
-  // 6. reset the headerInjector
-  p = p.then(function(ctx) { ctx.state.headerInjector = noop; return ctx;});
+  // 6. conditionally reset the headerInjector
+  if (req.headers) {
+    p = p.then(function(ctx) {     
+      ctx.state.headerInjector = noop; 
+      return ctx;
+    });
+  }
 
   return p;
 }
@@ -543,6 +556,18 @@ function runJob(context) {
       p, sequence;
 
   // check for termination.
+
+  if (pendingStop.hasOwnProperty(job.uuid)) {
+    // terminate
+    state.sequence = 0;
+    return q.resolve(context).then(function(c){
+      log.write('stopping...');
+      delete pendingStop[job.uuid];
+      delete activeJobs[job.uuid];
+      return c;
+    });
+  }
+
   // This is an unrolled version of a 3-level-deep nested loop
   if (state.request === state.R) {
     state.request = 0;
@@ -561,7 +586,7 @@ function runJob(context) {
     state.sequence = 0;
     return q.resolve(context).then(setWakeup, trackFailure);
   }
-  else {
+
     // reset counts and fall through
     state.S = job.sequences.length;
     state.R = job.sequences[state.sequence].requests.length;
@@ -571,7 +596,7 @@ function runJob(context) {
     log.write('R ' + (state.request + 1) + '/' + state.R +
               ' I ' + (state.iteration + 1) + '/' + state.I[state.sequence] +
               ' S ' + (state.sequence + 1) + '/' + state.S);
-  }
+
 
   // if we arrive here we're doing a request, implies an async call
   p = q.resolve(context).then(invokeOneRequest, trackFailure);
@@ -581,17 +606,20 @@ function runJob(context) {
   if (state.request === 0 && state.iteration !== 0) {
     if (sequence.delayBetweenIterations) {
       p = p.then(function(c) {
-        sleep.usleep(resolveNumeric(sequence.delayBetweenIterations) * 1000);
+        var t = resolveNumeric(sequence.delayBetweenIterations);
+        sleep.usleep(t * 1000);
         return c; // context, for chaining
       });
     }
   }
+
   return p.then(runJob);
 }
 
 
 function initializeJobRunAndKickoff(context) {
   var now = (new Date()).valueOf();
+  log.write("initializeJobRunAndKickoff");
   // initialize context for running
   if ( ! context.model.jobs) {
     log.write("-no job-");
@@ -683,6 +711,8 @@ function setWakeup(context) {
       // else {
       //   console.log('NO modelConnection?');
       // }
+      activeJobs[jobid] = 0; // mark this job as "running" (not waiting)
+      log.write('awake job(' + jobid + ')');
       q.resolve({jobid:jobid, modelConnection: context.modelConnection})
         .then(retrieveOneJob)
         .then(retrieveLoadProfileForJob)
@@ -821,6 +851,7 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                         else {
                           res.send({"status":"ok"});
                         }
+                        // we have retrieved the job, so return to caller. 
                         next();
                         return ctx;
                       })
@@ -832,11 +863,8 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                         return ctx;
                       })
                       .then(initializeJobRunAndKickoff)
-                      .then(function(ctx) {
-                        return true;
-                      })
-                      .done();
-
+                      .done(function(){}, 
+                           function(e){log.write('unhandled error: ' + e);});
                   }
                   else {
                     res.send(400, {status:"fail",message:"that job is already  running"});
@@ -846,8 +874,16 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                 else if (action == 'stop') {
                   if (activeJobs.hasOwnProperty(jobid)) {
                     timeoutId = activeJobs[jobid];
-                    clearTimeout(timeoutId);
-                    delete activeJobs[jobid];
+                    // Either the timeoutId is a real timeoutId or it is zero.
+                    // The latter indicates the job is "currently running". 
+                    if (timeoutId) {
+                      clearTimeout(timeoutId);
+                      delete activeJobs[jobid];
+                    }
+                    else {
+                      // mark for pending stop. This is checked in runJob. 
+                      pendingStop[jobid] = true;
+                    }
                     log.write('stop job ' + jobid);
                     res.send({status:"ok"});
                     return next();
