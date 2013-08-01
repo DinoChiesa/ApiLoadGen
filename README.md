@@ -399,11 +399,11 @@ Bugs
 
 - OPTIONS and HEAD are not yet supported as verbs in the requests that comprise a job
 - The settings for the job store are hardcoded to an open App Services app under my personal account.
-- The companion UI to manage job definitions is pretty limited. 
+- The companion UI to manage job definitions is pretty limited.  And ugly.
 - Currently there is no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.
 - starting a job with a non-existent job id results in {"message":"ok"} response. Expected: 400 {"message":"no such job"}
 - all requests in all sequences included in a job must point to the same API server. This is an unnecessary restriction.
-- there's a glaring race condition when stopping jobs; if you request a stop while a job is in-process (and not waiting), it will be ignored. 
 - the angularjs client app connects directly to App Services to authenticate. It should authn through the loadgen server. (not implemented yet)
 - the extracts get access to only the response body. Should also be able to access response headers.
 - Does not handle XML requests or responses, or anything non-JSON
+- it is not possible to change the logging verbosity in the loadgen server
