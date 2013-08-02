@@ -18,7 +18,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-July-31 18:04:58>
+// last saved: <2013-August-02 08:57:06>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -30,35 +30,27 @@
 var restify = require('restify'),
     assert = require('assert'),
     bunyan = require('bunyan'),
-    log = new Log(), 
     q = require ('q'),
     sleep = require('sleep'),
-    // bunyanLog = bunyan.createLogger({
-    //   name: 'my_restify_application',
-    //   level: process.env.LOG_LEVEL || 'info',
-    //   stream: process.stdout,
-    //   serializers: bunyan.stdSerializers
-    // }),
-    // server = restify.createServer({
-    //   log: bunyanLog,
-    //   name: 'my_restify_application'
-    // }),
+    log = new Log(), 
     server = restify.createServer(),
     activeJobs = {}, pendingStop = {}, 
     oneHourInMs = 60 * 60 * 1000,
     fiveMinutesInMs = 5 * 60 * 1000,
+    minSleepTimeInMs = 18000, 
+    defaultRunsPerHour = 60, 
     modelSourceUrlPrefix = '/dino/loadgen1',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
     reUuid = new RegExp(reUuidStr);
 
-  function Log(id) { }
+function Log(id) { }
 
-  Log.prototype.write = function(str) {
-    var time = (new Date()).toString(), me = this;
-    console.log('[' + time.substr(11, 4) + '-' +
-      time.substr(4, 3) + '-' + time.substr(8, 2) + ' ' +
-      time.substr(16, 8) + '] ' + str );
-  };
+Log.prototype.write = function(str) {
+  var time = (new Date()).toString(), me = this;
+  console.log('[' + time.substr(11, 4) + '-' +
+              time.substr(4, 3) + '-' + time.substr(8, 2) + ' ' +
+              time.substr(16, 8) + '] ' + str );
+};
 
 
 function getModelClient(param) {
@@ -92,10 +84,19 @@ function getModelClient(param) {
 
 function noop() {}
 
-function getUuidFinder(uuid) {
-  return function (elt, ix, a) {
-    return (elt.uuid === uuid);
-  };
+// function getUuidFinder(uuid) {
+//   return function (elt, ix, a) {
+//     return (elt.uuid === uuid);
+//   };
+// }
+
+function copyHash(obj) {
+    if (null === obj || "object" != typeof obj) {return obj;}
+    var copy = {};
+    for (var attr in obj) {
+        if (obj.hasOwnProperty(attr)) {copy[attr] = obj[attr];}
+    }
+    return copy;
 }
 
 
@@ -126,7 +127,10 @@ function logTransaction(e, req, res, obj, payload) {
 
 function retrieveAllJobs(ctx) {
   var deferredPromise = q.defer(), 
-      client = ctx.modelConnection.client || getModelClient(ctx);
+      // I am getting an ECONNRESET on the restify client after a long period of running. 
+      // In an attempt to avoid that, I'm not re-using the old client. 
+      //client = ctx.modelConnection.client || getModelClient(ctx);
+      client = getModelClient(ctx);
 
   log.write('retrieveAllJobs');
   client.get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
@@ -152,9 +156,12 @@ function retrieveAllJobs(ctx) {
 
 function retrieveOneJob(ctx) {
   var deferredPromise = q.defer(), 
-      client = ctx.modelConnection.client || getModelClient(ctx);
+      // I am getting an ECONNRESET on the restify client after a long period of running. 
+      // In an attempt to avoid that, I'm not re-using the old client. 
+      //client = ctx.modelConnection.client || getModelClient(ctx);
+      client = getModelClient(ctx);
 
-  log.write('retrieveOneJob(' + ctx.jobid + ')');
+  log.write(ctx.jobid + ' retrieveOneJob');
   client.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
     //logTransaction(e, httpReq, httpResp, obj);
     if (e) {
@@ -419,7 +426,7 @@ function invokeOneRequest(context) {
       actualPayload,
       client, p = q.resolve(context);
 
-  log.write('invokeOneRequest');
+  log.write(job.uuid + ' invokeOneRequest');
 
   // 1. initialize the restclient as necessary
   if (state.job === 0 && state.request === 0 && state.sequence === 0 && state.iteration === 0) {
@@ -587,15 +594,27 @@ function runJob(context) {
     return q.resolve(context).then(setWakeup, trackFailure);
   }
 
-    // reset counts and fall through
-    state.S = job.sequences.length;
-    state.R = job.sequences[state.sequence].requests.length;
-    if ( ! state.I[state.sequence]) {
-      state.I[state.sequence] = resolveNumeric(job.sequences[state.sequence].iterations);
-    }
-    log.write('R ' + (state.request + 1) + '/' + state.R +
-              ' I ' + (state.iteration + 1) + '/' + state.I[state.sequence] +
-              ' S ' + (state.sequence + 1) + '/' + state.S);
+  // need to verify that all properties are valid. 
+  // Sometimes they are not due to intermittent data retrieval errors. 
+  if ( ! (job.sequences && job.sequences.length && (state.sequence < job.sequences.length) &&
+      job.sequences[state.sequence].requests && job.sequences[state.sequence].requests.length)) {
+    return q.resolve(context)
+      .then(function(c){
+        log.write('state error');
+        return c;
+      })
+      .then(setWakeup);
+  }
+
+  // set and log counts 
+  state.S = job.sequences.length;
+  state.R = job.sequences[state.sequence].requests.length;
+  if ( ! state.I[state.sequence]) {
+    state.I[state.sequence] = resolveNumeric(job.sequences[state.sequence].iterations);
+  }
+  log.write('R ' + (state.request + 1) + '/' + state.R +
+            ' I ' + (state.iteration + 1) + '/' + state.I[state.sequence] +
+            ' S ' + (state.sequence + 1) + '/' + state.S);
 
 
   // if we arrive here we're doing a request, implies an async call
@@ -641,7 +660,7 @@ function initializeJobRunAndKickoff(context) {
       delete context.modelConnection.client;
       return q.resolve(context).then(setWakeup); 
     }
-    return q.resolve(context); 
+    return q.resolve(context).then(setWakeup); 
   }
 
   context.state = {
@@ -653,12 +672,11 @@ function initializeJobRunAndKickoff(context) {
     R : context.model.jobs[0].sequences[0].requests.length,
     iteration : 0,
     I : [],
-    extracts: context.initialExtractContext,
+    extracts: copyHash(context.initialExtractContext),
     start : now
   };
 
-  return q.resolve(context)
-    .then(runJob, trackFailure);
+  return q.resolve(context).then(runJob);
 }
 
 
@@ -671,8 +689,6 @@ function setWakeup(context) {
       durationOfLastRun = now - context.state.start,
       runsPerHour, sleepTimeInMs;
 
-  log.write('setWakeup');
-
   if (context.model.jobs && context.model.jobs[0]) {
     jobid = context.model.jobs[0].uuid;
   }
@@ -683,22 +699,23 @@ function setWakeup(context) {
     jobid = "xxx";
     log.write("context: " + JSON.stringify(context, null, 2));
   }
+  log.write(jobid + ' setWakeup');
 
   // compute and validate the sleep time
   if (currentHour < 0 || currentHour > 23) { currentHour = 0;}
   runsPerHour = (context.model.jobs &&
                  context.model.jobs[0].loadprofile &&
                  context.model.jobs[0].loadprofile[currentHour]) ?
-    context.model.jobs[0].loadprofile[currentHour] : 60; // default, every 1 mins
+    context.model.jobs[0].loadprofile[currentHour] : defaultRunsPerHour;
 
   sleepTimeInMs =
     Math.floor(oneHourInMs / runsPerHour) - durationOfLastRun;
 
-  if (sleepTimeInMs < 30000) { sleepTimeInMs = 30000; }
+  if (sleepTimeInMs < minSleepTimeInMs) { sleepTimeInMs = minSleepTimeInMs; }
 
-  log.write('doing ' + runsPerHour + ' runs per hour');
-  log.write('sleep ' + sleepTimeInMs + 'ms');
-  log.write('will wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
+  log.write(jobid + ' ' + runsPerHour + ' runs per hour');
+  log.write(jobid + ' sleep ' + sleepTimeInMs + 'ms, wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
+
 
   activeJobs[jobid] =
     setTimeout(function () {
@@ -712,7 +729,7 @@ function setWakeup(context) {
       //   console.log('NO modelConnection?');
       // }
       activeJobs[jobid] = 0; // mark this job as "running" (not waiting)
-      log.write('awake job(' + jobid + ')');
+      log.write(jobid + ' awake');
       q.resolve({jobid:jobid, modelConnection: context.modelConnection})
         .then(retrieveOneJob)
         .then(retrieveLoadProfileForJob)
@@ -723,7 +740,9 @@ function setWakeup(context) {
           ctx.state.start = startMoment;
           return ctx;
         })
-        .then(initializeJobRunAndKickoff);
+        .then(initializeJobRunAndKickoff)
+        .done(function(){}, 
+              function(e){log.write('unhandled error: ' + e);});
     }, sleepTimeInMs);
   return context;
 }
@@ -840,35 +859,42 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
 
               if (match) {
                 if (action == 'start') {
-                  if ( ! activeJobs.hasOwnProperty(jobid)) {
-                    q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization}})
-                      .then(retrieveOneJob)
-                      .then(function(ctx){
-                        // this response gets sent while the job is running
-                        if ( ! ctx.model.jobs) {
-                          res.send({"status":"fail","message":"no job"});
-                        }
-                        else {
-                          res.send({"status":"ok"});
-                        }
-                        // we have retrieved the job, so return to caller. 
-                        next();
-                        return ctx;
-                      })
-                      .then(retrieveLoadProfileForJob)
-                      .then(retrieveSequencesForJob)
-                      .then(function(ctx) {
-                        log.write('setting initial context');
-                        ctx.initialExtractContext = req.body;
-                        return ctx;
-                      })
-                      .then(initializeJobRunAndKickoff)
-                      .done(function(){}, 
-                           function(e){log.write('unhandled error: ' + e);});
+                  try {
+
+                    if ( ! activeJobs.hasOwnProperty(jobid)) {
+                      q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization}})
+                        .then(retrieveOneJob)
+                        .then(function(ctx){
+                          // this response gets sent while the job is running
+                          if ( ! ctx.model.jobs) {
+                            res.send({"status":"fail","message":"no job"});
+                          }
+                          else {
+                            res.send({"status":"ok"});
+                          }
+                          // we have retrieved the job, so return to caller. 
+                          next();
+                          return ctx;
+                        })
+                        .then(retrieveLoadProfileForJob)
+                        .then(retrieveSequencesForJob)
+                        .then(function(ctx) {
+                          log.write('setting initial context');
+                          ctx.initialExtractContext = req.body;
+                          return ctx;
+                        })
+                        .then(initializeJobRunAndKickoff)
+                        .done(function(){}, 
+                              function(e){log.write('unhandled error: ' + e);});
+                    }
+                    else {
+                      res.send(400, {status:"fail",message:"that job is already  running"});
+                      return next();
+                    }
+                    
                   }
-                  else {
-                    res.send(400, {status:"fail",message:"that job is already  running"});
-                    return next();
+                  catch (exc1) {
+                    log.write('Exception: ' + exc1);
                   }
                 }
                 else if (action == 'stop') {
