@@ -4,12 +4,16 @@
 // slimNodeHttpClient.js
 // ------------------------------------------------------------------
 //
-// development for a very slim, minimialistic http client for node.js.
+// Development for a very slim, minimialistic http client for node.js.
 // With promises?  Derived from https://github.com/mikeal/request.
-// Omigosh this is too complicated.
+// Omigosh this is complicated.
+//
+// to use this you may need to:
+//
+//     npm install url util stream http https json-stringify-safe
 //
 // created: Fri Aug  2 21:21:03 2013
-// last saved: <2013-August-07 16:06:00>
+// last saved: <2013-August-07 17:30:21>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa

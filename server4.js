@@ -14,11 +14,15 @@
 //
 // You may have to do the following to run this code:
 //
-//    npm install express sleep q
+//    npm install express sleep q assert http
+//
+// Additionally, the slimNodeHttpClient.js requires
+//
+//    npm install url util stream http https json-stringify-safe
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-07 17:16:01>
+// last saved: <2013-August-07 17:30:59>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
