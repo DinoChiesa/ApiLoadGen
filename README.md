@@ -274,31 +274,35 @@ The job definition should look something like this example:
 Some additional details:
 ----------------------
 
-The extracts, payload, and delayBefore are all optional parts of a request.  The
+The extracts, payload, and delayBefore are all optional parts of a request. The
 payload makes sense only for a PUT or POST. It's always JSON.  The extracts is
-an array of functions, specified in plaintext. These functions get evaluated on
-the response body received for the request, and the result of each function is
-stored in a named "context variable".  The descrition for the extract is just
-for documentation purposes.
+an array of objects, each of which contains a description, the name of a
+variable, and a function, specified in JavaScript. These functions accept two
+arguments, the body and the headers, and get evaluated after the response has
+been received for the request. The return value of the function gets stored in
+a context variable with the name specified in "valueRef".  The description for
+the extract is just for documentation purposes.
 
-An extract like this:
+For example, an extract like this:
 
     {
       "description" : "extract the login token",
-      "fn" : "function(obj) {return obj.login.token;}",
+      "fn" : "function(body, hdrs) {return body.login.token;}",
       "valueRef" : "login_token"
     }, 
 
-...when given a response payload like this: 
+...when given a response payload (body) like this: 
 
     { login: { token: "AAABBBCCC" } } 
 
 ...will extract the value AAABBBCCC and insert it into a context variable called
-login_token. This variable will then be available for use in the headers
-or payloads of subsequent requests in the sequence or the requests of subsequent sequences..
+login_token. This variable will then be available for use in the headers or
+payloads of subsequent requests in the sequence or the requests of subsequent
+sequences. 
 
-To insert the values of these context variables into the headers or payloads of
-subsequent outbound requests, specify the variable name in curly-braces, like this:
+To later insert the values of these context variables into the headers
+or payloads of subsequent outbound requests, specify the variable name
+in curly-braces, like this:
 
       "headers" : {
         "authorization" : "Bearer {login_token}"
@@ -310,6 +314,10 @@ subsequent outbound requests, specify the variable name in curly-braces, like th
         "token":"{login_token}",
         "otherStuff":"ABCDEF"
       }, 
+
+
+You should use single quotes within the extract functions if you need
+quotes. Or, escape the double quotes. 
 
 
 If you want the request rate to vary over time, you need to specify a load profile in
@@ -398,12 +406,10 @@ Bugs
 ----------------------
 
 - OPTIONS and HEAD are not yet supported as verbs in the requests that comprise a job
-- The settings for the job store are hardcoded to an open App Services app under my personal account.
+- The settings for the job store are hardcoded to an App Services org+app under my personal account. This should be specifyable.
 - The companion UI to manage job definitions is pretty limited.  And ugly.
-- Currently there is no way to set a variable X-Forwarded-For header.  There will be a way to allow a weighted-random selection of XFF.
-- starting a job with a non-existent job id results in {"message":"ok"} response. Expected: 400 {"message":"no such job"}
-- all requests in all sequences included in a job must point to the same API server. This is an unnecessary restriction.
-- the angularjs client app connects directly to App Services to authenticate. It should authn through the loadgen server. (not implemented yet)
-- the extracts get access to only the response body. Should also be able to access response headers.
+- When the token to contact App Services expires, the load runner server stops work, unable to read jobs. Need to implement token refresh.
+- Currently there is no way to set a variable X-Forwarded-For header.  There should be a way to allow a weighted-random selection of XFF.
 - Does not handle XML requests or responses, or anything non-JSON
 - it is not possible to change the logging verbosity in the loadgen server
+- the server depends on restify, which won't work in the Apigee Gwy noderunner 
