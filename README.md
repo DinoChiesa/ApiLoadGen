@@ -37,8 +37,17 @@ This is currently a work in progress. It's getting there.
 Interesting Files
 ----------------------
 
-* `server3.js`  
-  a simple REST server implemented with nodejs + restify. Accepts APIs on the jobs under management. 
+* `server4.js`  
+  a simple REST server implemented in nodejs, with express.  For the http client function it uses slimNodeHttpClient. It relies on q for promises.  Accepts APIs on the jobs under management. 
+
+* `slimNodeHttpClient.js`  
+  a slim http client for node that implements q's promises. The base http client in node is heinous. This gets require'd by server4.js 
+
+* `etl1.js`  
+  a simple command-line nodejs tool that loads the specified "model" file for a job into App Services. 
+
+* `model.json`  
+  an example model file for use with etl1.js
 
 * `ui/index.htm`  
   an angularJS client that connects to the REST server to inquire as to the jobs avaiable, and the run status of each one. 
@@ -49,6 +58,9 @@ Less Interesting Files
 ----------------------------------
 
 These were constructed during the R&D effort.  I may remove these later.
+
+* `server3.js`  
+  a simple REST nodejs server, similar to server4.js  above, but implemented with restify for the http client and server. Accepts APIs on the jobs under management. I'm no longer updating this module. 
 
 * `retrieve1.js`  
 a Nodejs program intended for use from the command line. It shows how to retrieve the "job model" from App Services
@@ -174,16 +186,21 @@ To fully create a complete job definition the loadgen server must:
   - add requests to each sequence
   - create a load profile and add it to the job
 
-Each of these steps requires an HTTP REST call to App Services. Loadgen
-wraps that storage model, though, so a loadgen client can simply post a
-complete job definition with all dependent objects composed into a
-single object graph to the loadgen server, and the loadgen server will
-decompose that object and store it into App Services. IN THEORY.  Currently this is not yet implemented. 
+Each of these steps requires an HTTP REST call to App Services. 
 
 There is a command line tool that loads jobs into App Services: etl1.js
 
-To use it, specify the job definition in json format, in a text file. 
-Then run the etl1.js script.  It will create a new job in the store. 
+It wraps that storage model, so that you can pass it a single object graph, and
+it will decompose that object and store it all appropriately into App Services.
+This is currently the easiest way to create new jobs. 
+
+To use etl1.js , create the job definition in json format, in a text file using
+your favorite text editor.  Then run the etl1.js script, specifying the name of
+that file.  It will create a new job in the store.
+
+As a future enhancement, I may modify the loadgen tool so that it also performs
+this work, and I may implement a suitable UI for that purpose. This is not yet
+implemented. For now use etl1.js. 
 
 The job definition should look something like this example: 
 
@@ -272,7 +289,7 @@ The job definition should look something like this example:
 
 
 Some additional details:
-----------------------
+-------------------------
 
 The extracts, payload, and delayBefore are all optional parts of a request. The
 payload makes sense only for a PUT or POST. It's always JSON.  The extracts is
@@ -359,10 +376,10 @@ of nested callbacks, or you can use promises to untangle that mess.
 
 Read more at https://github.com/promises-aplus/promises-spec
 
-In loadgen, a sequence of requests is really a sequence of HTTP calls,
-and some housekeeping (extractions, forced delays), around those
-calls. In this implementation, each of those requests is a promise,
-which runs asynchronously. Thus, a sequence runs as a chain of linked promises. 
+In loadgen, a sequence of requests is really a sequence of HTTP calls, and some
+housekeeping (extractions, forced delays), around those calls. In this
+implementation, each of those requests is a promise, which runs
+asynchronously. A sequence therefore results in a chain of linked promises.
 
 Each promise receives a "context", which it uses to run its
 request. Within the context are things like: the job definition (which
@@ -394,10 +411,10 @@ Operations Notes
 ----------------------
 
 The JS files here are NodeJS scripts.  They also require some other node
-modules, including: q, sleep, restify, assert, and fs.  To run these
-sripts, including the server3.js, you may have to:
+modules, including: q, sleep, assert, and fs.  To run these sripts, including
+server4.js, you may have to:
 
- `$ npm install q restify sleep`
+ `$ npm install q sleep`
 
 in your local directory.
 
@@ -406,10 +423,9 @@ Bugs
 ----------------------
 
 - OPTIONS and HEAD are not yet supported as verbs in the requests that comprise a job
-- The settings for the job store are hardcoded to an App Services org+app under my personal account. This should be specifyable.
-- The companion UI to manage job definitions is pretty limited.  And ugly.
-- When the token to contact App Services expires, the load runner server stops work, unable to read jobs. Need to implement token refresh.
-- Currently there is no way to set a variable X-Forwarded-For header.  There should be a way to allow a weighted-random selection of XFF.
-- Does not handle XML requests or responses, or anything non-JSON
+- In the loadgen server, the job store is hardcoded as an App Services org+app under my personal account. This should be specifyable in the UI.
+- The companion UI to manage job definitions is pretty limited and ugly.
+- When the token to contact App Services expires, the loadgen server stops work, unable to read jobs. Need to implement token refresh.
+- Currently the loadgen server does not allow outbound calls within a job to specify a variable X-Forwarded-For header.  There should be a way to allow a weighted-random selection of XFF.
 - it is not possible to change the logging verbosity in the loadgen server
-- the server depends on restify, which won't work in the Apigee Gwy noderunner 
+- loadgen jobs Does not handle XML requests or responses, or anything non-JSON. This is probably a low proprity. 
