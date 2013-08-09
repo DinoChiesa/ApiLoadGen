@@ -22,7 +22,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-07 17:30:59>
+// last saved: <2013-August-08 18:23:34>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -214,6 +214,13 @@ function retrieveRequestsForOneSequence(ctx) {
         model = context.model,
         options = getModelOptions(context);
 
+    // validate
+    if (!model.jobs[state.job].sequences) {
+      state.job++;
+      log.write('??no sequences');
+      return q.resolve(context);
+    }
+
     // check for termination
     if (state.currentSequence == model.jobs[state.job].sequences.length) {
       state.job++;
@@ -222,20 +229,26 @@ function retrieveRequestsForOneSequence(ctx) {
 
     deferred = q.defer();
     s = model.jobs[state.job].sequences[state.currentSequence];
-    url = modelSourceUrlPrefix + s.metadata.connections.references;
+    if (s && s.metadata && s.metadata.connections && s.metadata.connections.references) {
+      url = modelSourceUrlPrefix + s.metadata.connections.references;
 
-    log.write('retrieveRequestsForOneSequence');
-    options.uri = url;
-    request.get(options, function(e, httpResp, body) {
-      var obj = JSON.parse(body);
-      s.requests = obj.entities;
+      log.write('retrieveRequestsForOneSequence');
+      options.uri = url;
+      request.get(options, function(e, httpResp, body) {
+        var obj = JSON.parse(body);
+        s.requests = obj.entities;
+        state.currentSequence++;
+        deferred.resolve(context);
+      });
+    }
+    else {
+      s.requests = [];
       state.currentSequence++;
       deferred.resolve(context);
-    });
+    }
 
     return deferred.promise
       .then(retrieveRequestsForOneSequence);
-
   }(ctx));
 }
 
@@ -571,7 +584,10 @@ function runJob(context) {
     log.write('++ Iteration');
     return q.resolve(context).then(runJob);
   }
-  if (state.iteration === state.I[state.sequence]) {
+  if ( !state.I[state.sequence] && state.sequence < state.S) {
+    state.I[state.sequence] = resolveNumeric(job.sequences[state.sequence].iterations);
+  }
+  if (state.I[state.sequence] && state.iteration === state.I[state.sequence]) {
     state.iteration = 0;
     state.sequence++;
     log.write('++ Sequence');
@@ -626,11 +642,18 @@ function runJob(context) {
 
 
 function initializeJobRunAndKickoff(context) {
-  var now = (new Date()).valueOf();
+  var now = (new Date()).valueOf(), error;
   log.write("initializeJobRunAndKickoff");
   // initialize context for running
-  if ( ! context.model.jobs) {
-    log.write("-no job-");
+  if (!context.model.jobs || !context.model.jobs.length) {error = '-no jobs-';}
+  else if (!context.model.jobs[0]) {error = '-no job-';}
+  else if (!context.model.jobs[0].sequences ||
+      !context.model.jobs[0].sequences.length) {error = '-no sequences-';}
+  else if (!context.model.jobs[0].sequences[0].requests ||
+      !context.model.jobs[0].sequences[0].requests.length) {error = '-no requests-';}
+
+  if (error) {
+    log.write(error);
     context.state.sequence = 0;
     context.state.start = now;
     // nothing more to do?
@@ -643,7 +666,7 @@ function initializeJobRunAndKickoff(context) {
     // should stop.
     if (context.state.error) {
       if (context.state.error.statusCode === 404) {
-        return q.resolve(context);
+        return q.resolve(context); // and stop
       }
       return q.resolve(context).then(setWakeup);
     }
@@ -721,7 +744,10 @@ function setWakeup(context) {
         })
         .then(initializeJobRunAndKickoff)
         .done(function(){},
-              function(e){log.write('unhandled error: ' + e);});
+              function(e){
+                log.write('unhandled error: ' + e);
+                log.write(e.stack);
+              });
     }, sleepTimeInMs);
   return context;
 }
@@ -926,7 +952,6 @@ app.post('/jobs/:jobid',
               if (match) {
                 if (action == 'start') {
                   try {
-
                     if ( ! activeJobs.hasOwnProperty(jobid)) {
                       q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization}})
                         .then(retrieveOneJob)
@@ -949,9 +974,13 @@ app.post('/jobs/:jobid',
                         })
                         .then(initializeJobRunAndKickoff)
                         .done(function(){},
-                              function(e){log.write('unhandled error: ' + e);});
+                              function(e){
+                                log.write('unhandled error: ' + e);
+                                log.write(e.stack);
+                              });
                     }
                     else {
+                      log.write('cannot start; job is alreadyrunning');
                       res.json(400, {status:"fail",message:"that job is already running"});
                     }
                   }
@@ -976,14 +1005,17 @@ app.post('/jobs/:jobid',
                     res.json({status:"ok"});
                   }
                   else {
+                    log.write('cannot stop; job is not running');
                     res.json(400, {status:"fail", message:"that job is not currently running"});
                   }
                 }
                 else {
+                  log.write('invalid action');
                   res.json(400, {status:"fail", message:'invalid action'});
                 }
               }
               else {
+                log.write('bad job id');
                 res.json(400, {status:"fail", message:'malformed jobid'});
               }
             });
