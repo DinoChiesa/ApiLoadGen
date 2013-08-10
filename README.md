@@ -49,6 +49,12 @@ Interesting Files
 * `etl1.js`  
   a simple command-line nodejs tool that loads the specified "model" file for a job into App Services. 
 
+* `FileReader.js`  
+  a line-by-line file reader for nodejs, used by parseCitiesPop.js
+
+* `parseCitiesPop.js`  
+  a one-time use program to parse the txt file containing the list of US cities and population from wikipedia, and populate App Services with that data. 
+
 * `model.json`  
   an example model file for use with etl1.js
 
@@ -420,6 +426,7 @@ server4.js, you may have to:
  `$ npm install q sleep`
 
 in your local directory.
+
 
 
 Bugs
