@@ -1,7 +1,7 @@
 //
 // weightedRandomSelector.js
 //
-// simple weighted random selector. 
+// simple weighted random selector.
 //
 // Fri, 26 Jul 2013  11:14
 //
@@ -11,7 +11,7 @@ function WeightedRandomSelector(a) {
   // A must be an array of arrays. Each inner array is 2 elements,
   // with the item value as the first element and the weight for
   // that value as the second. The items need not be in any
-  // particular order.  eg, 
+  // particular order.  eg,
   // var fish = [
   //   //["name",      weight]
   //   ["Shark",      3],
@@ -28,7 +28,7 @@ function WeightedRandomSelector(a) {
   this.a = a;
   this.selectionCounts = [];
   this.weightThreshold = [];
-  // initialize 
+  // initialize
   for (i = 0, L = a.length; i<L; i++) {
     this.totalWeight += a[i][1];
     this.weightThreshold[i] = this.totalWeight;
@@ -38,7 +38,7 @@ function WeightedRandomSelector(a) {
 
 WeightedRandomSelector.prototype.select = function() {
   // select a random value
-  var R = Math.floor(Math.random() * this.totalWeight), 
+  var R = Math.floor(Math.random() * this.totalWeight),
       i, L;
 
   // now find the bucket that R value falls into.
@@ -52,7 +52,4 @@ WeightedRandomSelector.prototype.select = function() {
 };
 
 
-if (typeof exports === "object" && exports) {
-  exports.WeightedRandomSelector = WeightedRandomSelector;
-}
-
+module.exports = WeightedRandomSelector;

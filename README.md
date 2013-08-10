@@ -43,6 +43,9 @@ Interesting Files
 * `slimNodeHttpClient.js`  
   a slim http client for node that implements q's promises. The base http client in node is heinous. This gets require'd by server4.js 
 
+* `weightedRandomSelector.js`  
+  a module that provides a weighted random selector. This allows the server to randomly select a city based on population, for each request. It would make more sense to select a city per job. Anyway, this is the beginning of specifying a contrived X-Forwarded-For header. 
+
 * `etl1.js`  
   a simple command-line nodejs tool that loads the specified "model" file for a job into App Services. 
 

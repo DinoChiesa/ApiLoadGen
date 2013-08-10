@@ -22,7 +22,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-08 18:23:34>
+// last saved: <2013-August-10 13:03:55>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -36,9 +36,11 @@ var assert = require('assert'),
     sleep = require('sleep'),
     http = require('http'),
     request = require('./slimNodeHttpClient.js'),
+    WeightedRandomSelector = require('./weightedRandomSelector.js'),
     express = require('express'),
     app = express(),
     server,
+    citySelector,
     log = new Log(),
     activeJobs = {}, pendingStop = {},
     oneHourInMs = 60 * 60 * 1000,
@@ -85,14 +87,9 @@ function getModelOptions(param) {
   };
 }
 
-
-function noop() {}
-
-// function getUuidFinder(uuid) {
-//   return function (elt, ix, a) {
-//     return (elt.uuid === uuid);
-//   };
-// }
+function getType(obj) {
+  return Object.prototype.toString.call(obj);
+}
 
 function copyHash(obj) {
     if (null === obj || "object" != typeof obj) {return obj;}
@@ -145,8 +142,14 @@ function retrieveAllJobs(ctx) {
       });
     }
     else {
-      obj = JSON.parse(body);
-      if (obj.entities && obj.entities[0]) {
+      try {
+        obj = JSON.parse(body);
+      }
+      catch (exc1) {
+        obj = null;
+      }
+
+      if (obj && obj.entities && obj.entities[0]) {
         deferredPromise.resolve({
           state: {job:0, stage:'retrieve'},
           model: {jobs: obj.entities},
@@ -184,8 +187,14 @@ function retrieveOneJob(ctx) {
       });
     }
     else {
-      obj = JSON.parse(body);
-      if (obj.entities && obj.entities[0]) {
+      try {
+        obj = JSON.parse(body);
+      }
+      catch (exc1) {
+        obj = null;
+      }
+
+      if (obj && obj.entities && obj.entities[0]) {
         deferredPromise.resolve({
           state: {job:0, stage:'retrieve', jobid:ctx.jobid},
           model: {jobs: obj.entities},
@@ -235,8 +244,14 @@ function retrieveRequestsForOneSequence(ctx) {
       log.write('retrieveRequestsForOneSequence');
       options.uri = url;
       request.get(options, function(e, httpResp, body) {
-        var obj = JSON.parse(body);
-        s.requests = obj.entities;
+        var obj;
+        try {
+          obj = JSON.parse(body);
+        }
+        catch (exc1) {
+          obj = null;
+        }
+        s.requests = (obj && obj.entities && obj.entities[0]) ? obj.entities : null;
         state.currentSequence++;
         deferred.resolve(context);
       });
@@ -273,8 +288,14 @@ function retrieveLoadProfileForJob(ctx) {
       job.metadata.connections.uses + '?ql=' + encodeURIComponent(query);
 
     request.get(options, function(e, httpResp, body) {
-      var obj = JSON.parse(body);
-      if (obj.entities && obj.entities[0]) {
+      var obj;
+      try {
+        obj = JSON.parse(body);
+      }
+      catch (exc1) {
+        obj = null;
+      }
+      if (obj && obj.entities && obj.entities[0]) {
         context.model.jobs[0].loadprofile = obj.entities[0].perHourCounts;
       }
       deferred.resolve(context);
@@ -317,8 +338,15 @@ function retrieveSequencesForJob(ctx) {
         j.sequences = [];
       }
       else {
-        obj = JSON.parse(body);
-        j.sequences = obj.entities;
+        try {
+          obj = JSON.parse(body);
+        }
+        catch (exc1) {
+          obj = null;
+        }
+        if (obj && obj.entities && obj.entities[0]) {
+          j.sequences = obj.entities;
+        }
       }
       context.state.currentSequence = 0;
       deferred.resolve(context);
@@ -517,7 +545,7 @@ function invokeOneRequest(context) {
               log.write(ex.description);
               // actually invoke the compiled fn
               try {
-                // sometimes the body is already parsed into an object
+                // sometimes the body is already parsed into an object?
                 obj = Object.prototype.toString.call(body);
                 obj = (obj === '[object String]') ? JSON.parse(body) : body;
                 ctx.state.extracts[ex.valueRef] = ex.compiledFn(obj, httpResp.headers);
@@ -538,6 +566,10 @@ function invokeOneRequest(context) {
       (isUrl.test(url)) ? url :
       job.defaultProperties.scheme + '://' + job.defaultProperties.host + url;
 
+    // Select a random city to insert into the headers.
+    // In the future this will be X-Forwarded-For
+    reqOptions.headers['x-random-city'] = citySelector.select().name;
+
     log.write(method + ' ' + reqOptions.uri);
 
     if (method === "post" || method === "put") {
@@ -556,6 +588,35 @@ function invokeOneRequest(context) {
 
   return p;
 }
+
+function retrieveCities(ctx) {
+  var deferredPromise = q.defer(),
+      options = {
+        uri: modelSourceUrlPrefix + '/cities?limit=1000',
+        method: 'get',
+        headers: {
+          'Accept' : 'application/json',
+          'user-agent' : 'SlimHttpClient/1.0'
+        }
+      };
+  request(options, function(e, httpResp, body) {
+    var a, type, cities;
+    if (e) {
+      console.log('retrieving cities, error: ' + e);
+    }
+    else {
+      type = getType(body);
+      if (type === "[object String]") { body = JSON.parse(body); }
+      cities = body.entities.map(function(elt) {
+        return [ elt, Number(elt.pop2010) ];
+      });
+      citySelector = new WeightedRandomSelector(cities);
+    }
+    deferredPromise.resolve(ctx);
+  });
+  return deferredPromise.promise;
+}
+
 
 
 function runJob(context) {
@@ -623,7 +684,15 @@ function runJob(context) {
 
 
   // if we arrive here we're doing a request, implies an async call
-  p = q.resolve(context).then(invokeOneRequest, trackFailure);
+  p = q.resolve(context);
+
+  // retrieveCities if necessary
+  if (!citySelector) {
+    p = p.then(retrieveCities);
+  }
+
+  // do the call
+  p = p.then(invokeOneRequest, trackFailure);
 
   // sleep if necessary
   sequence = job.sequences[state.sequence];
@@ -835,7 +904,13 @@ app.get('/users/:userid', function(req, res, next) {
   options.uri = modelSourceUrlPrefix + req.url;
   log.write('outbound GET ' + options.uri);
   request.get(options, function(e, httpResp, body) {
-    var obj = JSON.parse(body), responseBody;
+    var obj, responseBody;
+    try {
+      obj = JSON.parse(body);
+    }
+    catch (exc1) {
+      obj = null;
+    }
     logTransaction(e, null, httpResp, obj);
     res.setHeader('Content-Type', 'application/json');
     // var msg = '';
@@ -844,7 +919,7 @@ app.get('/users/:userid', function(req, res, next) {
     //   msg += elt;
     // });
     // log.write('keys(httpResp): ' + msg);
-    if (e || !obj.entities) {
+    if (e || !obj || !obj.entities || !obj.entities[0] || !obj.entities[0].type || obj.entities[0].type !== 'user') {
       responseBody = {status:'error'};
       if (obj['error_description']) {
         responseBody.message = obj['error_description'];
