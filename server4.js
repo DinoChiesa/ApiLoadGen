@@ -22,7 +22,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-10 13:03:55>
+// last saved: <2013-August-10 13:37:40>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -527,6 +527,7 @@ function invokeOneRequest(context) {
   // 4. actually do the http call, and the subsequent extracts
   p = p.then(function(ctx) {
     var deferredPromise = q.defer(),
+        city,
         method = (req.method)? req.method.toLowerCase() : "get",
         respCallback = function(e, httpResp, body) {
           var i, L, ex, obj;
@@ -567,8 +568,9 @@ function invokeOneRequest(context) {
       job.defaultProperties.scheme + '://' + job.defaultProperties.host + url;
 
     // Select a random city to insert into the headers.
-    // In the future this will be X-Forwarded-For
-    reqOptions.headers['x-random-city'] = citySelector.select().name;
+    // In the future this will be X-Forwarded-For.
+    city = citySelector.select()[0];
+    reqOptions.headers['x-random-city'] = city.name + '/' + city.state;
 
     log.write(method + ' ' + reqOptions.uri);
 
