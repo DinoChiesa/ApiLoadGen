@@ -1,0 +1,2612 @@
+|-
+|rank
+|city
+|state
+|pop2012
+|pop2010
+|area
+|density
+|ansi
+|latlong
+|-
+|1
+|[[New York]]
+|[[New York]]
+|8336697|8175133
+|302.643
+|27012
+|02395220
+|40.6643°N 73.9385°W
+|-
+|2
+|[[Los Angeles]]
+|[[California]]
+|3857799|3792621
+|468.670
+|8092
+|02410877
+|34.0194°N 118.4108°W
+|-
+|3
+|[[Chicago]]
+|[[Illinois]]
+|2714856|2695598
+|227.635
+|11842
+|00428803
+|41.8376°N 87.6818°W
+|-
+|4
+|[[Houston]]
+|[[Texas]]
+|2160821|2100263
+|599.589
+|3501
+|02410796
+|29.7805°N 95.3863°W
+|-
+|5
+|[[Philadelphia]]
+|[[Pennsylvania]]
+|1547607|1526006
+|134.101
+|11379
+|01215531
+|40.0094°N 75.1333°W
+|-
+|6
+|[[Phoenix, Arizona|Phoenix]]
+|[[Arizona]]
+|1488750|1445632
+|516.704
+|2798
+|02411414
+|33.5722°N 112.0880°W
+|-
+|7
+|[[San Antonio]]
+|[[Texas]]
+|1382951|1327407
+|460.933
+|2880
+|02411774
+|29.4724°N 98.5251°W
+|-
+|8
+|[[San Diego]]
+|[[California]]
+|1338348|1307402
+|325.188
+|4020
+|02411782
+|32.8153°N 117.1350°W
+|-
+|9
+|[[Dallas]]
+|[[Texas]]
+|1241162|1197816
+|340.519
+|3518
+|02410288
+|32.7757°N 96.7967°W
+|-
+|10
+|[[San Jose, California|San Jose]]
+|[[California]]
+|982765|945942
+|176.526
+|5359
+|02411790
+|37.2969°N 121.8193°W
+|-
+|11
+|[[Austin]]
+|[[Texas]]
+|842592|790390
+|297.896
+|2653
+|02409761
+|30.3072°N 97.7560°W
+|-
+|12
+|[[Jacksonville]]
+|[[Florida]]
+|836507|821784
+|747.003
+|1100
+|02404783
+|30.3370°N 81.6613°W
+|-
+|13
+|[[Indianapolis]]
+|[[Indiana]]
+|834852|820445
+|361.433
+|2270
+|02395424
+|39.7767°N 86.1459°W
+|-
+|14
+|[[San Francisco]]
+|[[California]]
+|825863|805235
+|46.873
+|17179
+|02411786
+|37.7751°N 122.4193°W
+|-
+|15
+|[[Columbus, Ohio|Columbus]]
+|[[Ohio]]
+|809798|787033
+|217.169
+|3624
+|01086101
+|39.9848°N 82.9850°W
+|-
+|16
+|[[Fort Worth, Texas|Fort Worth]]
+|[[Texas]]
+|777992|741206
+|339.819
+|2181
+|02410531
+|32.7795°N 97.3463°W
+|-
+|17
+|[[Charlotte, North Carolina|Charlotte]]
+|[[North Carolina]]
+|775202|731424
+|297.678
+|2457
+|02404032
+|35.2087°N 80.8307°W
+|-
+|18
+|[[Detroit]]
+|[[Michigan]]
+|701475|713777
+|138.750
+|5144
+|01626181
+|42.3830°N 83.1022°W
+|-
+|19
+|[[El Paso, Texas|El Paso]]
+|[[Texas]]
+|672538|649121
+|255.235
+|2543
+|02410414
+|31.8484°N 106.4270°W
+|-
+|20
+|[[Memphis, Tennessee|Memphis]]
+|[[Tennessee]]
+|655155|646889
+|315.055
+|2053
+|02405068
+|35.1035°N 89.9785°W
+|-
+|21
+|[[Boston]]
+|[[Massachusetts]]
+|636479|617594
+|48.277
+|12793
+|00619463
+|42.3320°N 71.0202°W
+|-
+|22
+|[[Seattle]]
+|[[Washington (state)|Washington]]
+|634535|608660
+|83.943
+|7251
+|02411856
+|47.6205°N 122.3509°W
+|-
+|23
+|[[Denver]]
+|[[Colorado]]
+|634265|600158
+|153.000
+|3923
+|02410324
+|39.7618°N 104.8806°W
+|-
+|24
+|[[Washington, D.C.|Washington]]
+|[[District of Columbia]]
+|632323|601723
+|61.048
+|9856
+|02390665
+|38.9041°N 77.0171°W
+|-
+|25
+|[[Nashville, Tennessee|Nashville]]
+|[[Tennessee]]
+|624496|601222
+|475.126
+|1265
+|02405092
+|36.1718°N 86.7850°W
+|-
+|26
+|[[Baltimore]]
+|[[Maryland]]
+|621342|620961
+|80.944
+|7672
+|01702381
+|39.3002°N 76.6105°W
+|-
+|27
+|[[Louisville, Kentucky|Louisville]]
+|[[Kentucky]]
+|605110|597337
+|325.248
+|1837
+|01967434
+|38.1781°N 85.6667°W
+|-
+|28
+|[[Portland, Oregon|Portland]]
+|[[Oregon]]
+|603106|583776
+|133.427
+|4375
+|02411471
+|45.5370°N 122.6500°W
+|-
+|29
+|[[Oklahoma City]]
+|[[Oklahoma]]
+|599199|579999
+|606.410
+|956
+|02411311
+|35.4671°N 97.5137°W
+|-
+|30
+|[[Milwaukee]]
+|[[Wisconsin]]
+|598916|594833
+|96.122
+|6188
+|01583724
+|43.0633°N 87.9667°W
+|-
+|31
+|[[Las Vegas]]
+|[[Nevada]]
+|596424|583756
+|135.815
+|4298
+|02411630
+|36.2277°N 115.2640°W
+|-
+|32
+|[[Albuquerque, New Mexico|Albuquerque]]
+|[[New Mexico]]
+|555417|545852
+|187.730
+|2908
+|02409678
+|35.1056°N 106.6474°W
+|-
+|33
+|[[Tucson, Arizona|Tucson]]
+|[[Arizona]]
+|524295|520116
+|226.709
+|2294
+|02412104
+|32.1543°N 110.8711°W
+|-
+|34
+|[[Fresno, California|Fresno]]
+|[[California]]
+|505882|494665
+|111.957
+|4418
+|02410546
+|36.7827°N 119.7945°W
+|-
+|35
+|[[Sacramento, California|Sacramento]]
+|[[California]]
+|475516|466488
+|97.915
+|4764
+|02411751
+|38.5666°N 121.4686°W
+|-
+|36
+|[[Long Beach, California|Long Beach]]
+|[[California]]
+|467892|462257
+|50.293
+|9191
+|02410866
+|33.8091°N 118.1553°W
+|-
+|37
+|[[Kansas City, Missouri|Kansas City]]
+|[[Missouri]]
+|464310|459787
+|314.950
+|1460
+|02395492
+|39.1252°N 94.5511°W
+|-
+|38
+|[[Mesa, Arizona|Mesa]]
+|[[Arizona]]
+|452084|439041
+|136.452
+|3218
+|02411087
+|33.4019°N 111.7174°W
+|-
+|39
+|[[Virginia Beach]]
+|[[Virginia]]
+|447021|437994
+|249.016
+|1759
+|01498559
+|36.7793°N 76.0240°W
+|-
+|40
+|[[Atlanta]]
+|[[Georgia (U.S. state)|Georgia]]
+|443775|420003
+|133.152
+|3154
+|02403126
+|33.7629°N 84.4227°W
+|-
+|41
+|[[Colorado Springs, Colorado|Colorado Springs]]
+|[[Colorado]]
+|431834|416427
+|194.540
+|2141
+|02410198
+|38.8673°N 104.7607°W
+|-
+|42
+|[[Raleigh, North Carolina|Raleigh]]
+|[[North Carolina]]
+|423179|403892
+|142.903
+|2826
+|02404590
+|35.8302°N 78.6414°W
+|-
+|43
+|[[Omaha, Nebraska|Omaha]]
+|[[Nebraska]]
+|421570|408958
+|127.088
+|3218
+|02396064
+|41.2647°N 96.0419°W
+|-
+|44
+|[[Miami]]
+|[[Florida]]
+|413892|399457
+|35.871
+|11136
+|02404247
+|25.7752°N 80.2086°W
+|-
+|45
+|[[Oakland, California|Oakland]]
+|[[California]]
+|400740|390724
+|55.786
+|7004
+|02411292
+|37.7699°N 122.2256°W
+|-
+|46
+|[[Tulsa, Oklahoma|Tulsa]]
+|[[Oklahoma]]
+|393987|391906
+|196.754
+|1992
+|02412110
+|36.1279°N 95.9023°W
+|-
+|47
+|[[Minneapolis]]
+|[[Minnesota]]
+|392880|382578
+|53.973
+|7088
+|02395345
+|44.9633°N 93.2683°W
+|-
+|48
+|[[Cleveland]]
+|[[Ohio]]
+|390928|396815
+|77.697
+|5107
+|01085963
+|41.4781°N 81.6795°W
+|-
+|49
+|[[Wichita, Kansas|Wichita]]
+|[[Kansas]]
+|385577|382368
+|159.295
+|2400
+|00485662
+|37.6907°N 97.3427°W
+|-
+|50
+|[[Arlington, Texas|Arlington]]
+|[[Texas]]
+|375600|365438
+|95.882
+|3811
+|02409731
+|32.7007°N 97.1247°W
+|-
+|51
+|[[New Orleans]]
+|[[Louisiana]]
+|369250|343829
+|169.423
+|2029
+|00545142
+|30.0686°N 89.9390°W
+|-
+|52
+|[[Bakersfield, California|Bakersfield]]
+|[[California]]
+|358597|347483
+|142.164
+|2444
+|02409774
+|35.3212°N 119.0183°W
+|-
+|53
+|[[Tampa, Florida|Tampa]]
+|[[Florida]]
+|347645|335709
+|113.409
+|2960
+|02405568
+|27.9701°N 82.4797°W
+|-
+|54
+|[[Honolulu]]
+|[[Hawaii|Hawaii]]
+|345610|337256
+|60.521
+|5573
+|02630783
+|21.3259°N 157.8453°W
+|-
+|55
+|[[Anaheim, California|Anaheim]]
+|[[California]]
+|343248|336265
+|49.835
+|6748
+|02409704
+|33.8555°N 117.7601°W
+|-
+|56
+|[[Aurora, Colorado|Aurora]]
+|[[Colorado]]
+|339030|325078
+|154.100
+|2110
+|02409731
+|32.7007°N 97.1247°W
+|-
+|57
+|[[Santa Ana, California|Santa Ana]]
+|[[California]]
+|330920|324528
+|27.270
+|11901
+|02411814
+|33.7365°N 117.8826°W
+|-
+|58
+|[[St. Louis]]
+|[[Missouri]]
+|318172|319294
+|61.909
+|5157
+|00767557
+|38.6357°N 90.2446°W
+|-
+|59
+|[[Riverside, California|Riverside]]
+|[[California]]
+|313673|303871
+|81.140
+|3745
+|02410965
+|33.9381°N 117.3932°W
+|-
+|60
+|[[Corpus Christi, Texas|Corpus Christi]]
+|[[Texas]]
+|312195|305215
+|160.612
+|1900
+|02410234
+|27.7543°N 97.1734°W
+|-
+|61
+|[[Pittsburgh]]
+|[[Pennsylvania]]
+|306211|305704
+|55.367
+|5521
+|01214818
+|40.4398°N 79.9766°W
+|-
+|62
+|[[Lexington, Kentucky|Lexington]]
+|[[Kentucky]]
+|305489|295803
+|283.649
+|1043
+|02405089
+|38.0402°N 84.4584°W
+|-
+|63
+|[[Anchorage, Alaska|Anchorage]]
+|[[Alaska]]
+|298610|291826
+|1704.683
+|171
+|02419025
+|61.1775°N 149.2744°W
+|-
+|64
+|[[Stockton, California|Stockton]]
+|[[California]]
+|297984|291707
+|61.670
+|4730
+|02411987
+|37.9763°N 121.3133°W
+|-
+|65
+|[[Cincinnati]]
+|[[Ohio]]
+|296550|296943
+|77.942
+|3810
+|01086201
+|39.1399°N 84.5064°W
+|-
+|66
+|[[St. Paul, Minnesota|Saint Paul]]
+|[[Minnesota]]
+|290770|285068
+|51.979
+|5484
+|02396511
+|44.9489°N 93.1039°W
+|-
+|67
+|[[Toledo, Ohio|Toledo]]
+|[[Ohio]]
+|284012|287208
+|80.692
+|3559
+|01086537
+|41.6641°N 83.5819°W
+|-
+|68
+|[[Newark, New Jersey|Newark]]
+|[[New Jersey]]
+|277727|277140
+|24.187
+|11458
+|00885317
+|40.7242°N 74.1726°W
+|-
+|69
+|[[Greensboro, North Carolina|Greensboro]]
+|[[North Carolina]]
+|277080|269666
+|126.515
+|2131
+|02403745
+|36.0965°N 79.8271°W
+|-
+|70
+|[[Plano, Texas|Plano]]
+|[[Texas]]
+|272068|259841
+|71.581
+|3630
+|02411437
+|33.0508°N 96.7479°W
+|-
+|71
+|[[Henderson, Nevada|Henderson]]
+|[[Nevada]]
+|265679|257729
+|107.732
+|2392
+|02410741
+|36.0122°N 115.0375°W
+|-
+|72
+|[[Lincoln, Nebraska|Lincoln]]
+|[[Nebraska]]
+|265404|258379
+|89.114
+|2899
+|02395713
+|40.8090°N 96.6804°W
+|-
+|73
+|[[Buffalo, New York|Buffalo]]
+|[[New York]]
+|259384|261310
+|40.384
+|6471
+|00978764
+|42.8925°N 78.8597°W
+|-
+|74
+|[[Fort Wayne, Indiana|Fort Wayne]]
+|[[Indiana]]
+|254555|253691
+|110.618
+|2293
+|02394798
+|41.0882°N 85.1439°W
+|-
+|75
+|[[Jersey City, New Jersey|Jersey City]]
+|[[New Jersey]]
+|254441|247597
+|14.794
+|16737
+|00885264
+|40.7114°N 74.0648°W
+|-
+|76
+|[[Chula Vista, California|Chula Vista]]
+|[[California]]
+|252422|243916
+|49.631
+|4915
+|02409461
+|32.6277°N 117.0152°W
+|-
+|77
+|[[Orlando, Florida|Orlando]]
+|[[Florida]]
+|249562|238300
+|102.395
+|2327
+|02404443
+|28.4159°N 81.2988°W
+|-
+|78
+|[[St. Petersburg, Florida|St. Petersburg]]
+|[[Florida]]
+|246541|244769
+|61.742
+|3964
+|02405401
+|27.7620°N 82.6441°W
+|-
+|79
+|[[Norfolk, Virginia|Norfolk]]
+|[[Virginia]]
+|245782|242803
+|54.120
+|4486
+|01498557
+|36.9230°N 76.2446°W
+|-
+|80
+|[[Chandler, Arizona|Chandler]]
+|[[Arizona]]
+|245628|236123
+|64.413
+|3666
+|02409433
+|33.2829°N 111.8549°W
+|-
+|81
+|[[Laredo, Texas|Laredo]]
+|[[Texas]]
+|244731|236091
+|88.908
+|2655
+|02411626
+|27.5477°N 99.4869°W
+|-
+|82
+|[[Madison, Wisconsin|Madison]]
+|[[Wisconsin]]
+|240323|233209
+|76.789
+|3037
+|01583625
+|43.0878°N 89.4301°W
+|-
+|83
+|[[Durham, North Carolina|Durham]]
+|[[North Carolina]]
+|239358|228330
+|107.370
+|2127
+|02403521
+|35.9810°N 78.9056°W
+|-
+|84
+|[[Lubbock, Texas|Lubbock]]
+|[[Texas]]
+|236065|229573
+|122.410
+|1875
+|02410892
+|33.5665°N 101.8867°W
+|-
+|85
+|[[Winston–Salem, North Carolina|Winston–Salem]]
+|[[North Carolina]]
+|234349|229617
+|132.449
+|1734
+|02405771
+|36.1033°N 80.2606°W
+|-
+|86
+|[[Garland, Texas|Garland]]
+|[[Texas]]
+|233564|226876
+|57.085
+|3974
+|02410572
+|32.9098°N 96.6304°W
+|-
+|87
+|[[Glendale, Arizona|Glendale]]
+|[[Arizona]]
+|232143|226721
+|59.976
+|3780
+|02410596
+|33.5331°N 112.1899°W
+|-
+|88
+|[[Hialeah, Florida|Hialeah]]
+|[[Florida]]
+|231941|224669
+|21.450
+|10474
+|02404689
+|25.8699°N 80.3029°W
+|-
+|89
+|[[Reno, Nevada|Reno]]
+|[[Nevada]]
+|231027|225221
+|103.009
+|2186
+|02410923
+|39.4745°N 119.7765°W
+|-
+|90
+|[[Baton Rouge, Louisiana|Baton Rouge]]
+|[[Louisiana]]
+|230058|229493
+|76.947
+|2982
+|02403821
+|30.4485°N 91.1259°W
+|-
+|91
+|[[Irvine, California|Irvine]]
+|[[California]]
+|229985|212375
+|66.106
+|3213
+|02410116
+|33.6784°N 117.7713°W
+|-
+|92
+|[[Chesapeake, Virginia|Chesapeake]]
+|[[Virginia]]
+|228417|222209
+|340.800
+|652
+|01498558
+|36.6794°N 76.3018°W
+|-
+|93
+|[[Irving, Texas|Irving]]
+|[[Texas]]
+|225427|216290
+|67.017
+|3227
+|02410117
+|32.8577°N 96.9700°W
+|-
+|94
+|[[Scottsdale, Arizona|Scottsdale]]
+|[[Arizona]]
+|223514|217385
+|183.920
+|1182
+|02411845
+|33.6687°N 111.8237°W
+|-
+|95
+|[[North Las Vegas, Nevada|North Las Vegas]]
+|[[Nevada]]
+|223491|216961
+|101.345
+|2141
+|02411273
+|36.2830°N 115.0893°W
+|-
+|96
+|[[Fremont, California|Fremont]]
+|[[California]]
+|221986|214089
+|77.459
+|2764
+|02410545
+|37.4944°N 121.9411°W
+|-
+|97
+|[[Gilbert, Arizona|Gilbert]]
+|[[Arizona]]
+|221140|208453
+|67.963
+|3067
+|02412682
+|33.3102°N 111.7422°W
+|-
+|98
+|[[San Bernardino, California|San Bernardino]]
+|[[California]]
+|213295|209924
+|59.201
+|3546
+|02411777
+|34.1393°N 117.2953°W
+|-
+|99
+|[[Boise, Idaho|Boise]]
+|[[Idaho]]
+|212303|205671
+|79.364
+|2592
+|02409876
+|43.5985°N 116.2311°W
+|-
+|100
+|[[Birmingham, Alabama|Birmingham]]
+|[[Alabama]]
+|212038|212237
+|146.067
+|1453
+|02403868
+|33.5274°N 86.7990°W
+|-
+|101
+|[[Rochester, New York|Rochester]]
+|[[New York]]
+|210532|210565
+|35.781
+|5885
+|00979426
+|43.1699°N 77.6169°W
+|-
+|102
+|[[Richmond, Virginia|Richmond]]
+|[[Virginia]]
+|210309|204214
+|59.805
+|3415
+|01789073
+|37.5314°N 77.4760°W
+|-
+|103
+|[[Spokane, Washington|Spokane]]
+|[[Washington (state)|Washington]]
+|209525|208916
+|59.247
+|3526
+|02411956
+|47.6736°N 117.4166°W
+|-
+|104
+|[[Des Moines, Iowa|Des Moines]]
+|[[Iowa]]
+|206688|203433
+|80.869
+|2516
+|02394522
+|41.5739°N 93.6167°W
+|-
+|105
+|[[Montgomery, Alabama|Montgomery]]
+|[[Alabama]]
+|205293|205764
+|159.565
+|1290
+|02404289
+|32.3463°N 86.2686°W
+|-
+|106
+|[[Modesto, California|Modesto]]
+|[[California]]
+|203547|201165
+|36.867
+|5456
+|02411130
+|37.6609°N 120.9891°W
+|-
+|107
+|[[Fayetteville, North Carolina|Fayetteville]]
+|[[North Carolina]]
+|202103|200564
+|145.845
+|1375
+|02403604
+|35.0851°N 78.9803°W
+|-
+|108
+|[[Tacoma, Washington|Tacoma]]
+|[[Washington (state)|Washington]]
+|202010|198397
+|49.721
+|3990
+|02412025
+|47.2522°N 122.4598°W
+|-
+|109
+|[[Shreveport, Louisiana|Shreveport]]
+|[[Louisiana]]
+|201867|199311
+|105.375
+|1891
+|02405463
+|32.4670°N 93.7927°W
+|-
+|110
+|[[Fontana, California|Fontana]]
+|[[California]]
+|201812|196069
+|42.432
+|4621
+|02410517
+|34.1088°N 117.4627°W
+|-
+|111
+|[[Oxnard, California|Oxnard]]
+|[[California]]
+|201555|197899
+|26.894
+|7358
+|02411347
+|34.2023°N 119.2046°W
+|-
+|112
+|[[Aurora, Illinois|Aurora]]
+|[[Illinois]]
+|199932|197899
+|44.936
+|4404
+|02394031
+|41.7635°N 88.2901°W
+|-
+|113
+|[[Moreno Valley, California|Moreno Valley]]
+|[[California]]
+|199552|193365
+|51.275
+|3771
+|02411159
+|33.9233°N 117.2057°W
+|-
+|114
+|[[Akron, Ohio|Akron]]
+|[[Ohio]]
+|198549|199110
+|62.033
+|3210
+|01086993
+|41.0805°N 81.5214°W
+|-
+|115
+|[[Yonkers, New York|Yonkers]]
+|[[New York]]
+|198449|195976
+|18.012
+|10880
+|00979660
+|40.9459°N 73.8674°W
+|-
+|116
+|[[Columbus, Georgia|Columbus]]
+|[[Georgia (U.S. state)|Georgia]]
+|198413|189885
+|216.385
+|878
+|02404111
+|32.5102°N 84.8749°W
+|-
+|117
+|[[Augusta, Georgia|Augusta]]
+|[[Georgia (U.S. state)|Georgia]]
+|197872|195844
+|302.474
+|647
+|02405078
+|33.3655°N 82.0734°W
+|-
+|118
+|[[Little Rock, Arkansas|Little Rock]]
+|[[Arkansas]]
+|196537|193524
+|119.200
+|1624
+|02404939
+|34.7254°N 92.3586°W
+|-
+|119
+|[[Amarillo, Texas|Amarillo]]
+|[[Texas]]
+|195250|190695
+|99.476
+|1917
+|02409694
+|35.1978°N 101.8287°W
+|-
+|120
+|[[Mobile, Alabama|Mobile]]
+|[[Alabama]]
+|194822|195111
+|139.109
+|1403
+|02404278
+|30.6684°N 88.1002°W
+|-
+|121
+|[[Huntington Beach, California|Huntington Beach]]
+|[[California]]
+|194708|189992
+|26.748
+|7103
+|02410811
+|33.6906°N 118.0093°W
+|-
+|122
+|[[Glendale, California|Glendale]]
+|[[California]]
+|194478|191719
+|30.453
+|6295
+|02410597
+|34.1814°N 118.2458°W
+|-
+|123
+|[[Grand Rapids, Michigan|Grand Rapids]]
+|[[Michigan]]
+|190411|188040
+|44.395
+|4236
+|01626373
+|42.9612°N 85.6556°W
+|-
+|124
+|[[Salt Lake City]]
+|[[Utah]]
+|189314|186440
+|111.110
+|1678
+|02411771
+|40.7785°N 111.9314°W
+|-
+|125
+|[[Tallahassee, Florida|Tallahassee]]
+|[[Florida]]
+|186971|181376
+|100.247
+|1809
+|02405563
+|30.4551°N 84.2534°W
+|-
+|126
+|[[Huntsville, Alabama|Huntsville]]
+|[[Alabama]]
+|183739|180105
+|209.054
+|862
+|02404746
+|34.7843°N 86.5390°W
+|-
+|127
+|[[Worcester, Massachusetts|Worcester]]
+|[[Massachusetts]]
+|182669|181045
+|37.371
+|4845
+|00619493
+|42.2695°N 71.8078°W
+|-
+|128
+|[[Knoxville, Tennessee|Knoxville]]
+|[[Tennessee]]
+|182200|178874
+|98.521
+|1816
+|02404842
+|35.9709°N 83.9465°W
+|-
+|129
+|[[Grand Prairie, Texas|Grand Prairie]]
+|[[Texas]]
+|181824|175396
+|72.105
+|2433
+|02410632
+|32.6842°N 97.0210°W
+|-
+|130
+|[[Newport News, Virginia|Newport News]]
+|[[Virginia]]
+|180726|180719
+|68.714
+|2630
+|01498555
+|37.0760°N 76.5217°W
+|-
+|131
+|[[Brownsville, Texas|Brownsville]]
+|[[Texas]]
+|180097|175023
+|132.330
+|1323
+|02409924
+|26.0183°N 97.4538°W
+|-
+|132
+|[[Santa Clarita, California|Santa Clarita]]
+|[[California]]
+|179013|176320
+|52.716
+|3345
+|02411819
+|34.4049°N 118.5047°W
+|-
+|133
+|[[Overland Park, Kansas|Overland Park]]
+|[[Kansas]]
+|178919|173372
+|74.841
+|2317
+|00485639
+|38.8890°N 94.6906°W
+|-
+|134
+|[[Providence, Rhode Island|Providence]]
+|[[Rhode Island]]
+|178432|178042
+|18.400
+|9676
+|01220076
+|41.8231°N 71.4188°W
+|-
+|135
+|[[Jackson, Mississippi|Jackson]]
+|[[Mississippi]]
+|175437|173514
+|111.046
+|1563
+|02404779
+|32.3158°N 90.2128°W
+|-
+|136
+|[[Garden Grove, California|Garden Grove]]
+|[[California]]
+|174389|170883
+|17.941
+|9525
+|02410568
+|33.7788°N 117.9605°W
+|-
+|137
+|[[Oceanside, California|Oceanside]]
+|[[California]]
+|171293|167086
+|41.235
+|4052
+|02411301
+|33.2246°N 117.3062°W
+|-
+|138
+|[[Chattanooga, Tennessee|Chattanooga]]
+|[[Tennessee]]
+|171279|167674
+|137.152
+|1223
+|02404035
+|35.0665°N 85.2471°W
+|-
+|139
+|[[Fort Lauderdale, Florida|Fort Lauderdale]]
+|[[Florida]]
+|170747|165521
+|34.765
+|4761
+|02403640
+|26.1413°N 80.1439°W
+|-
+|140
+|[[Rancho Cucamonga, California|Rancho Cucamonga]]
+|[[California]]
+|170746|165269
+|39.851
+|4147
+|02411514
+|34.1233°N 117.5642°W
+|-
+|141
+|[[Santa Rosa, California|Santa Rosa]]
+|[[California]]
+|170685|167815
+|41.294
+|4064
+|02411827
+|38.4468°N 122.7061°W
+|-
+|142
+|[[Port St. Lucie, Florida|Port St. Lucie]]
+|[[Florida]]
+|168716|164603
+|113.953
+|1444
+|02404558
+|27.2810°N 80.3838°W
+|-
+|143
+|[[Ontario, California|Ontario]]
+|[[California]]
+|167211|163924
+|49.941
+|3282
+|02411323
+|34.0395°N 117.6088°W
+|-
+|144
+|[[Tempe, Arizona|Tempe]]
+|[[Arizona]]
+|166842|161719
+|39.929
+|4050
+|02412045
+|33.3884°N 111.9318°W
+|-
+|145
+|[[Vancouver, Washington|Vancouver]]
+|[[Washington (state)|Washington]]
+|165489|161791
+|46.456
+|3483
+|02412146
+|45.6372°N 122.5965°W
+|-
+|146
+|[[Springfield, Missouri|Springfield]]
+|[[Missouri]]
+|162191|159498
+|81.720
+|1952
+|02395942
+|37.1942°N 93.2913°W
+|-
+|147
+|[[Cape Coral, Florida|Cape Coral]]
+|[[Florida]]
+|161248|154305
+|105.673
+|1460
+|02403990
+|26.6431°N 81.9973°W
+|-
+|148
+|[[Pembroke Pines, Florida|Pembroke Pines]]
+|[[Florida]]
+|160306|154750
+|33.124
+|4672
+|02404502
+|26.0212°N 80.3404°W
+|-
+|149
+|[[Sioux Falls, South Dakota|Sioux Falls]]
+|[[South Dakota]]
+|159908|153888
+|72.964
+|2109
+|01267566
+|43.5383°N 96.7320°W
+|-
+|150
+|[[Peoria, Arizona|Peoria]]
+|[[Arizona]]
+|159789|154065
+|174.404
+|883
+|02411401
+|33.7877°N 112.3111°W
+|-
+|151
+|[[Lancaster, California|Lancaster]]
+|[[California]]
+|159055|156633
+|94.276
+|1661
+|02411620
+|34.6936°N 118.1753°W
+|-
+|152
+|[[Elk Grove, California|Elk Grove]]
+|[[California]]
+|159038|153015
+|42.190
+|3627
+|02410425
+|38.4144°N 121.3849°W
+|-
+|153
+|[[Corona, California|Corona]]
+|[[California]]
+|158391|152374
+|38.825
+|3925
+|02410232
+|33.8624°N 117.5639°W
+|-
+|154
+|[[Eugene, Oregon|Eugene]]
+|[[Oregon]]
+|157986|156185
+|43.723
+|3572
+|02410460
+|44.0567°N 123.1162°W
+|-
+|155
+|[[Salem, Oregon|Salem]]
+|[[Oregon]]
+|157429|154637
+|47.896
+|3229
+|02411764
+|44.9237°N 123.0231°W
+|-
+|156
+|[[Palmdale, California|Palmdale]]
+|[[California]]
+|155650|152750
+|105.961
+|1442
+|02411359
+|34.5913°N 118.1090°W
+|-
+|157
+|[[Salinas, California|Salinas]]
+|[[California]]
+|154484|150441
+|23.179
+|6490
+|02411768
+|36.6902°N 121.6337°W
+|-
+|158
+|[[Springfield, Massachusetts|Springfield]]
+|[[Massachusetts]]
+|153552|153060
+|31.865
+|4803
+|00619388
+|42.1155°N 72.5400°W
+|-
+|159
+|[[Pasadena, Texas|Pasadena]]
+|[[Texas]]
+|152272|149043
+|42.762
+|3485
+|02411380
+|29.6583°N 95.1505°W
+|-
+|160
+|[[Rockford, Illinois|Rockford]]
+|[[Illinois]]
+|150843|152871
+|61.081
+|2503
+|02396405
+|42.2634°N 89.0628°W
+|-
+|161
+|[[Pomona, California|Pomona]]
+|[[California]]
+|150812|149058
+|22.952
+|6494
+|02411454
+|34.0586°N 117.7613°W
+|-
+|162
+|[[Hayward, California|Hayward]]
+|[[California]]
+|149392|144186
+|45.323
+|3181
+|02410724
+|37.6281°N 122.1063°W
+|-
+|163
+|[[Fort Collins, Colorado|Fort Collins]]
+|[[Colorado]]
+|148612|143986
+|54.277
+|2653
+|02410526
+|40.5482°N 105.0648°W
+|-
+|164
+|[[Joliet, Illinois|Joliet]]
+|[[Illinois]]
+|148268|147433
+|62.114
+|2374
+|02395477
+|41.5181°N 88.1584°W
+|-
+|165
+|[[Escondido, California|Escondido]]
+|[[California]]
+|147575|143911
+|36.813
+|3909
+|02410455
+|33.1336°N 117.0732°W
+|-
+|166
+|[[Kansas City, Kansas|Kansas City]]
+|[[Kansas]]
+|147268|145786
+|124.810
+|1168
+|00485601
+|39.1225°N 94.7418°W
+|-
+|167
+|[[Torrance, California|Torrance]]
+|[[California]]
+|147027|145438
+|20.478
+|7102
+|02412087
+|33.8350°N 118.3414°W
+|-
+|168
+|[[Bridgeport, Connecticut|Bridgeport]]
+|[[Connecticut]]
+|146425|144229
+|15.974
+|9029
+|02378269
+|41.1874°N 73.1957°W
+|-
+|169
+|[[Alexandria, Virginia|Alexandria]]
+|[[Virginia]]
+|146294|139966
+|15.027
+|9314
+|01498415
+|38.8183°N 77.0820°W
+|-
+|170
+|[[Sunnyvale, California|Sunnyvale]]
+|[[California]]
+|146197|140081
+|21.987
+|6371
+|02412009
+|37.3858°N 122.0263°W
+|-
+|171
+|[[Cary, North Carolina|Cary]]
+|[[North Carolina]]
+|145693|135234
+|54.345
+|2488
+|02406229
+|35.7821°N 78.8141°W
+|-
+|172
+|[[Lakewood, Colorado|Lakewood]]
+|[[Colorado]]
+|145516|142980
+|42.880
+|3334
+|02411614
+|39.6989°N 105.1176°W
+|-
+|173
+|[[Hollywood, Florida|Hollywood]]
+|[[Florida]]
+|145236|140768
+|27.366
+|5144
+|02404719
+|26.0311°N 80.1646°W
+|-
+|174
+|[[Paterson, New Jersey|Paterson]]
+|[[New Jersey]]
+|145219|146199
+|8.428
+|17346
+|00885343
+|40.9147°N 74.1628°W
+|-
+|175
+|[[Syracuse, New York|Syracuse]]
+|[[New York]]
+|144170|145170
+|25.043
+|5797
+|00979539
+|43.0410°N 76.1436°W
+|-
+|176
+|[[Naperville, Illinois|Naperville]]
+|[[Illinois]]
+|143684|141853
+|38.769
+|3659
+|02395147
+|41.7492°N 88.1620°W
+|-
+|177
+|[[McKinney, Texas|McKinney]]
+|[[Texas]]
+|143223|131117
+|62.209
+|2108
+|02411064
+|33.2012°N 96.6680°W
+|-
+|178
+|[[Mesquite, Texas|Mesquite]]
+|[[Texas]]
+|143195|139824
+|46.021
+|3038
+|02411090
+|32.7639°N 96.5924°W
+|-
+|179
+|[[Clarksville, Tennessee|Clarksville]]
+|[[Tennessee]]
+|142519|132929
+|97.603
+|1362
+|02404061
+|36.5664°N 87.3452°W
+|-
+|180
+|[[Savannah, Georgia|Savannah]]
+|[[Georgia (U.S. state)|Georgia]]
+|142022|136286
+|103.151
+|1321
+|02405429
+|32.0025°N 81.1536°W
+|-
+|181
+|[[Dayton, Ohio|Dayton]]
+|[[Ohio]]
+|141359|141527
+|55.652
+|2543
+|01086666
+|39.7774°N 84.1996°W
+|-
+|182
+|[[Orange, California|Orange]]
+|[[California]]
+|139419|136416
+|24.797
+|5501
+|02411325
+|33.8048°N 117.8249°W
+|-
+|183
+|[[Fullerton, California|Fullerton]]
+|[[California]]
+|138574|135161
+|22.353
+|6047
+|02410556
+|33.8857°N 117.9280°W
+|-
+|184
+|[[Pasadena, California|Pasadena]]
+|[[California]]
+|138547|137122
+|22.970
+|5970
+|02411379
+|34.1606°N 118.1396°W
+|-
+|185
+|[[Hampton, Virginia|Hampton]]
+|[[Virginia]]
+|136836|137436
+|51.413
+|2673
+|01498554
+|37.0480°N 76.2971°W
+|-
+|186
+|[[McAllen, Texas|McAllen]]
+|[[Texas]]
+|134719|129877
+|48.344
+|2687
+|02411057
+|26.2185°N 98.2461°W
+|-
+|187
+|[[Killeen, Texas|Killeen]]
+|[[Texas]]
+|134654|127921
+|53.580
+|2387
+|02411542
+|31.0777°N 97.7320°W
+|-
+|188
+|[[Warren, Michigan|Warren]]
+|[[Michigan]]
+|134141|134056
+|34.381
+|3899
+|01627213
+|42.4929°N 83.0250°W
+|-
+|189
+|[[West Valley City, Utah|West Valley City]]
+|[[Utah]]
+|132434|129480
+|35.556
+|3642
+|02412231
+|40.6885°N 112.0118°W
+|-
+|190
+|[[Columbia, South Carolina|Columbia]]
+|[[South Carolina]]
+|131686|129272
+|132.213
+|978
+|02404107
+|34.0298°N 80.8966°W
+|-
+|191
+|[[New Haven, Connecticut|New Haven]]
+|[[Connecticut]]
+|130741|129779
+|18.679
+|6948
+|02378285
+|41.3108°N 72.9250°W
+|-
+|192
+|[[Sterling Heights, Michigan|Sterling Heights]]
+|[[Michigan]]
+|130410|129699
+|36.505
+|3553
+|01627126
+|42.5812°N 83.0303°W
+|-
+|193
+|[[Olathe, Kansas|Olathe]]
+|[[Kansas]]
+|130045|125872
+|59.661
+|2110
+|00485633
+|38.8843°N 94.8188°W
+|-
+|194
+|[[Miramar, Florida|Miramar]]
+|[[Florida]]
+|128729|122041
+|29.521
+|4134
+|02404275
+|25.9770°N 80.3358°W
+|-
+|195
+|[[Thousand Oaks, California|Thousand Oaks]]
+|[[California]]
+|128412|126683
+|55.031
+|2302
+|02412065
+|34.1933°N 118.8742°W
+|-
+|196
+|[[Frisco, Texas|Frisco]]
+|[[Texas]]
+|128176|116989
+|61.804
+|1893
+|02410549
+|33.1510°N 96.8193°W
+|-
+|197
+|[[Cedar Rapids, Iowa|Cedar Rapids]]
+|[[Iowa]]
+|128119|126326
+|70.799
+|1784
+|00467567
+|41.9670°N 91.6778°W
+|-
+|198
+|[[Topeka, Kansas|Topeka]]
+|[[Kansas]]
+|127939|127473
+|60.168
+|2119
+|00485655
+|39.0362°N 95.6948°W
+|-
+|199
+|[[Visalia, California|Visalia]]
+|[[California]]
+|127081|124442
+|36.246
+|3433
+|02412160
+|36.3272°N 119.3234°W
+|-
+|200
+|[[Waco, Texas|Waco]]
+|[[Texas]]
+|127018|124805
+|88.964
+|1403
+|02412162
+|31.5601°N 97.1860°W
+|-
+|201
+|[[Elizabeth, New Jersey|Elizabeth]]
+|[[New Jersey]]
+|126458|124969
+|12.319
+|10144
+|00885205
+|40.6663°N 74.1935°W
+|-
+|202
+|[[Bellevue, Washington|Bellevue]]
+|[[Washington (state)|Washington]]
+|126439|122363
+|31.968
+|3828
+|02409821
+|47.5978°N 122.1565°W
+|-
+|203
+|[[Gainesville, Florida|Gainesville]]
+|[[Florida]]
+|126047|124354
+|61.305
+|2028
+|02403676
+|29.6788°N 82.3459°W
+|-
+|204
+|[[Simi Valley, California|Simi Valley]]
+|[[California]]
+|125793|124237
+|41.480
+|2995
+|02411904
+|34.2669°N 118.7485°W
+|-
+|205
+|[[Charleston, South Carolina|Charleston]]
+|[[South Carolina]]
+|125583|120083
+|108.979
+|1102
+|02404030
+|32.8179°N 79.9589°W
+|-
+|206
+|[[Carrollton, Texas|Carrollton]]
+|[[Texas]]
+|125409|119097
+|36.296
+|3281
+|02409992
+|32.9884°N 96.8998°W
+|-
+|207
+|[[Coral Springs, Florida|Coral Springs]]
+|[[Florida]]
+|125287|121096
+|23.792
+|5090
+|02404127
+|26.2708°N 80.2593°W
+|-
+|208
+|[[Stamford, Connecticut|Stamford]]
+|[[Connecticut]]
+|125109|122643
+|37.639
+|3258
+|02378291
+|41.0799°N 73.5460°W
+|-
+|209
+|[[Hartford, Connecticut|Hartford]]
+|[[Connecticut]]
+|124893|124775
+|17.381
+|7179
+|02378277
+|41.7660°N 72.6833°W
+|-
+|210
+|[[Concord, California|Concord]]
+|[[California]]
+|124711|122067
+|30.546
+|3996
+|02410214
+|37.9722°N 122.0016°W
+|-
+|211
+|[[Roseville, California|Roseville]]
+|[[California]]
+|124519|118788
+|36.222
+|3279
+|02411000
+|38.7657°N 121.3032°W
+|-
+|212
+|[[Thornton, Colorado|Thornton]]
+|[[Colorado]]
+|124140|118772
+|34.843
+|3409
+|02412064
+|39.9180°N 104.9454°W
+|-
+|213
+|[[Kent, Washington|Kent]]
+|[[Washington (state)|Washington]]
+|122999|92411
+|28.625
+|3228
+|02410185
+|47.3853°N 122.2169°W
+|-
+|214
+|[[Lafayette, Louisiana|Lafayette]]
+|[[Louisiana]]
+|122761|120623
+|49.231
+|2450
+|02404854
+|30.2116°N 92.0314°W
+|-
+|215
+|[[Surprise, Arizona|Surprise]]
+|[[Arizona]]
+|121287|117517
+|105.747
+|1111
+|02412016
+|33.6706°N 112.4527°W
+|-
+|216
+|[[Denton, Texas|Denton]]
+|[[Texas]]
+|121123|113383
+|87.952
+|1289
+|02410323
+|33.2151°N 97.1417°W
+|-
+|217
+|[[Victorville, California|Victorville]]
+|[[California]]
+|120336|115903
+|73.178
+|1584
+|02412156
+|34.5277°N 117.3536°W
+|-
+|218
+|[[Evansville, Indiana|Evansville]]
+|[[Indiana]]
+|120235|117429
+|44.153
+|2660
+|02394710
+|37.9877°N 87.5347°W
+|-
+|219
+|[[Midland, Texas|Midland]]
+|[[Texas]]
+|119385|111147
+|72.071
+|1542
+|02411096
+|32.0299°N 102.1097°W
+|-
+|220
+|[[Santa Clara, California|Santa Clara]]
+|[[California]]
+|119311|116468
+|18.407
+|6327
+|02411816
+|37.3646°N 121.9679°W
+|-
+|221
+|[[Athens, Georgia|Athens]]
+|[[Georgia (U.S. state)|Georgia]]
+|118999|115452
+|116.355
+|992
+|02407405
+|33.9496°N 83.3701°W
+|-
+|222
+|[[Allentown, Pennsylvania|Allentown]]
+|[[Pennsylvania]]
+|118974|118032
+|17.546
+|6727
+|01215372
+|40.5940°N 75.4782°W
+|-
+|223
+|[[Abilene, Texas|Abilene]]
+|[[Texas]]
+|118887|117063
+|106.793
+|1096
+|02409657
+|32.4545°N 99.7381°W
+|-
+|224
+|[[Beaumont, Texas|Beaumont]]
+|[[Texas]]
+|118228|118296
+|82.801
+|1429
+|02409806
+|30.0843°N 94.1458°W
+|-
+|225
+|[[Vallejo, California|Vallejo]]
+|[[California]]
+|117796|115942
+|30.671
+|3780
+|02412142
+|38.1079°N 122.2639°W
+|-
+|226
+|[[Independence, Missouri|Independence]]
+|[[Missouri]]
+|117270|116830
+|77.567
+|1506
+|02395422
+|39.0853°N 94.3513°W
+|-
+|227
+|[[Springfield, Illinois|Springfield]]
+|[[Illinois]]
+|117126|116250
+|59.480
+|1954
+|02395940
+|39.7639°N 89.6708°W
+|-
+|228
+|[[Ann Arbor, Michigan|Ann Arbor]]
+|[[Michigan]]
+|116121|113934
+|27.830
+|4094
+|01625837
+|42.2756°N 83.7313°W
+|-
+|229
+|[[Provo, Utah|Provo]]
+|[[Utah]]
+|115919|112488
+|41.673
+|2699
+|02411499
+|40.2453°N 111.6448°W
+|-
+|230
+|[[Peoria, Illinois|Peoria]]
+|[[Illinois]]
+|115687|115007
+|48.007
+|2396
+|02396178
+|40.7523°N 89.6171°W
+|-
+|231
+|[[Norman, Oklahoma|Norman]]
+|[[Oklahoma]]
+|115562|110925
+|178.763
+|621
+|02411267
+|35.2406°N 97.3453°W
+|-
+|232
+|[[Berkeley, California|Berkeley]]
+|[[California]]
+|115403|112580
+|10.470
+|10752
+|02409837
+|37.8667°N 122.2991°W
+|-
+|233
+|[[El Monte, California|El Monte]]
+|[[California]]
+|115111|113475
+|9.562
+|11867
+|02410413
+|34.0746°N 118.0291°W
+|-
+|234
+|[[Murfreesboro, Tennessee|Murfreesboro]]
+|[[Tennessee]]
+|114038|108755
+|55.346
+|1965
+|02404342
+|35.8522°N 86.4161°W
+|-
+|235
+|[[Lansing, Michigan|Lansing]]
+|[[Michigan]]
+|113996|114297
+|36.049
+|3171
+|01626588
+|42.7098°N 84.5562°W
+|-
+|236
+|[[Columbia, Missouri|Columbia]]
+|[[Missouri]]
+|113225|108500
+|63.077
+|1720
+|02393605
+|38.9479°N 92.3261°W
+|-
+|237
+|[[Downey, California|Downey]]
+|[[California]]
+|112873|111772
+|12.408
+|9008
+|02410352
+|33.9382°N 118.1309°W
+|-
+|238
+|[[Costa Mesa, California|Costa Mesa]]
+|[[California]]
+|111918|109960
+|15.654
+|7025
+|02410239
+|33.6659°N 117.9123°W
+|-
+|239
+|[[Inglewood, California|Inglewood]]
+|[[California]]
+|111182|109673
+|9.068
+|12095
+|02410106
+|33.9561°N 118.3443°W
+|-
+|240
+|[[Miami Gardens, Florida|Miami Gardens]]
+|[[Florida]]
+|110754|107167
+|18.231
+|5878
+|02404249
+|25.9489°N 80.2436°W
+|-
+|241
+|[[Manchester, New Hampshire|Manchester]]
+|[[New Hampshire]]
+|110209|109565
+|33.101
+|3310
+|00873658
+|42.9847°N 71.4439°W
+|-
+|242
+|[[Elgin, Illinois|Elgin]]
+|[[Illinois]]
+|109927|108188
+|37.163
+|2911
+|02394641
+|42.0396°N 88.3217°W
+|-
+|243
+|[[Wilmington, North Carolina|Wilmington]]
+|[[North Carolina]]
+|109922|106476
+|51.493
+|2068
+|02405754
+|34.2092°N 77.8858°W
+|-
+|244
+|[[Waterbury, Connecticut|Waterbury]]
+|[[Connecticut]]
+|109915|110366
+|28.519
+|3870
+|02378294
+|41.5585°N 73.0367°W
+|-
+|245
+|[[Fargo, North Dakota|Fargo]]
+|[[North Dakota]]
+|109779|105549
+|48.821
+|2162
+|01036030
+|46.8652°N 96.8290°W
+|-
+|246
+|[[Arvada, Colorado|Arvada]]
+|[[Colorado]]
+|109745|106433
+|35.142
+|3029
+|02409737
+|39.8097°N 105.1066°W
+|-
+|247
+|[[Carlsbad, California|Carlsbad]]
+|[[California]]
+|109318|105328
+|37.722
+|2792
+|02409984
+|33.1239°N 117.2828°W
+|-
+|248
+|[[Westminster, Colorado|Westminster]]
+|[[Colorado]]
+|109169|106114
+|31.550
+|3363
+|02412237
+|39.8822°N 105.0644°W
+|-
+|249
+|[[Rochester, Minnesota|Rochester]]
+|[[Minnesota]]
+|108992|106769
+|54.586
+|1956
+|02396395
+|44.0154°N 92.4772°W
+|-
+|250
+|[[Gresham, Oregon|Gresham]]
+|[[Oregon]]
+|108956|105594
+|23.201
+|4551
+|02410663
+|45.5023°N 122.4416°W
+|-
+|251
+|[[Clearwater, Florida|Clearwater]]
+|[[Florida]]
+|108732|107685
+|25.562
+|4213
+|02404067
+|27.9795°N 82.7663°W
+|-
+|252
+|[[Lowell, Massachusetts|Lowell]]
+|[[Massachusetts]]
+|108522|106519
+|13.583
+|7842
+|00618227
+|42.6389°N 71.3221°W
+|-
+|253
+|[[West Jordan, Utah|West Jordan]]
+|[[Utah]]
+|108383|103712
+|32.457
+|3195
+|02412222
+|40.6023°N 112.0010°W
+|-
+|254
+|[[Pueblo, Colorado|Pueblo]]
+|[[Colorado]]
+|107772|106595
+|53.641
+|1987
+|02411501
+|38.2731°N 104.6124°W
+|-
+|255
+|[[Ventura, California|San Buenaventura (Ventura)]]
+|[[California]]
+|107734|106433
+|21.655
+|4915
+|02411779
+|34.2681°N 119.2550°W
+|-
+|256
+|[[Fairfield, California|Fairfield]]
+|[[California]]
+|107684|105321
+|37.390
+|2817
+|02410474
+|38.2568°N 122.0397°W
+|-
+|257
+|[[West Covina, California|West Covina]]
+|[[California]]
+|107440|106098
+|16.041
+|6614
+|02412219
+|34.0559°N 117.9099°W
+|-
+|258
+|[[Billings, Montana|Billings]]
+|[[Montana]]
+|106954|104170
+|43.413
+|2399
+|02409849
+|45.7895°N 108.5499°W
+|-
+|259
+|[[Murrieta, California|Murrieta]]
+|[[California]]
+|106810|103466
+|33.577
+|3081
+|02411199
+|33.5719°N 117.1907°W
+|-
+|260
+|[[High Point, North Carolina|High Point]]
+|[[North Carolina]]
+|106586|104371
+|53.803
+|1940
+|02404696
+|35.9855°N 79.9902°W
+|-
+|261
+|[[Round Rock, Texas|Round Rock]]
+|[[Texas]]
+|106573|99887
+|34.113
+|2928
+|02411005
+|30.5237°N 97.6674°W
+|-
+|262
+|[[Richmond, California|Richmond]]
+|[[California]]
+|106516|103701
+|30.068
+|3449
+|02410939
+|37.9530°N 122.3594°W
+|-
+|263
+|[[Cambridge, Massachusetts|Cambridge]]
+|[[Massachusetts]]
+|106471|105162
+|6.385
+|16469
+|00619396
+|42.3760°N 71.1183°W
+|-
+|264
+|[[Norwalk, California|Norwalk]]
+|[[California]]
+|106278|105549
+|9.707
+|10873
+|02411281
+|33.9069°N 118.0834°W
+|-
+|265
+|[[Odessa, Texas|Odessa]]
+|[[Texas]]
+|106102|99940
+|41.955
+|2382
+|02411303
+|31.8804°N 102.3434°W
+|-
+|266
+|[[Antioch, California|Antioch]]
+|[[California]]
+|105508|102372
+|28.349
+|3611
+|02409715
+|37.9775°N 121.7976°W
+|-
+|267
+|[[Temecula, California|Temecula]]
+|[[California]]
+|105208|100097
+|30.151
+|3320
+|02412044
+|33.5019°N 117.1246°W
+|-
+|268
+|[[Green Bay, Wisconsin|Green Bay]]
+|[[Wisconsin]]
+|104868|104057
+|45.467
+|2289
+|01583309
+|44.5207°N 87.9842°W
+|-
+|269
+|[[Everett, Washington|Everett]]
+|[[Washington (state)|Washington]]
+|104655|103019
+|33.447
+|3080
+|02410469
+|48.0033°N 122.1742°W
+|-
+|270
+|[[Wichita Falls, Texas|Wichita Falls]]
+|[[Texas]]
+|104552|104553
+|72.140
+|1449
+|02412261
+|33.9067°N 98.5259°W
+|-
+|271
+|[[Burbank, California|Burbank]]
+|[[California]]
+|104391|103340
+|17.341
+|5959
+|02409939
+|34.1890°N 118.3249°W
+|-
+|272
+|[[Palm Bay, Florida|Palm Bay]]
+|[[Florida]]
+|104124|103190
+|65.702
+|1571
+|02404463
+|27.9856°N 80.6626°W
+|-
+|273
+|[[Centennial, Colorado|Centennial]]
+|[[Colorado]]
+|103743|100377
+|28.722
+|3495
+|02409422
+|39.5906°N 104.8691°W
+|-
+|274
+|[[Daly City, California|Daly City]]
+|[[California]]
+|103690|101123
+|7.664
+|13195
+|02410291
+|37.7009°N 122.4650°W
+|-
+|275
+|[[Richardson, Texas|Richardson]]
+|[[Texas]]
+|103297|99223
+|28.564
+|3474
+|02410933
+|32.9723°N 96.7081°W
+|-
+|276
+|[[Pompano Beach, Florida|Pompano Beach]]
+|[[Florida]]
+|102984|99845
+|24.002
+|4160
+|02404547
+|26.2426°N 80.1290°W
+|-
+|277
+|[[Broken Arrow, Oklahoma|Broken Arrow]]
+|[[Oklahoma]]
+|102019|98850
+|61.571
+|1605
+|02409914
+|36.0365°N 95.7810°W
+|-
+|278
+|[[North Charleston, South Carolina|North Charleston]]
+|[[South Carolina]]
+|101989|97471
+|
+|
+|
+|32.8853°N 80.0169°W
+|-
+|279
+|[[West Palm Beach, Florida|West Palm Beach]]
+|[[Florida]]
+|101903|99919
+|55.293
+|1807
+|02405713
+|26.7483°N 80.1266°W
+|-
+|280
+|[[Boulder, Colorado|Boulder]]
+|[[Colorado]]
+|101808|97385
+|
+|
+|
+|40.0175°N 105.2797°W
+|-
+|281
+|[[Rialto, California|Rialto]]
+|[[California]]
+|101740|99171
+|22.351
+|4437
+|02410931
+|34.1118°N 117.3883°W
+|-
+|282
+|[[Santa Maria, California|Santa Maria]]
+|[[California]]
+|101459|99553
+|22.756
+|4375
+|02411824
+|34.9332°N 120.4438°W
+|-
+|283
+|[[El Cajon, California|El Cajon]]
+|[[California]]
+|101435|99478
+|14.433
+|6892
+|02410406
+|32.8017°N 116.9605°W
+|-
+|284
+|[[Davenport, Iowa|Davenport]]
+|[[Iowa]]
+|101363|99685
+|62.948
+|1584
+|02394467
+|41.5541°N 90.6040°W
+|-
+|285-(T)
+|[[Erie, Pennsylvania|Erie]]
+|[[Pennsylvania]]
+|101047|101786
+|19.081
+|5334
+|01215209
+|42.1166°N 80.0735°W
+|-
+|285-(T)
+|[[Las Cruces, New Mexico|Las Cruces]]
+|[[New Mexico]]
+|101047|97618
+|76.29
+|1279
+|
+|32.3197°N 106.7653°W
+|-
+|287
+|[[South Bend, Indiana|South Bend]]
+|[[Indiana]]
+|100800|101168
+|41.458
+|2440
+|02395913
+|41.6769°N 86.2690°W
+|-
+|288
+|[[Flint, Michigan|Flint]]
+|[[Michigan]]
+|100515|102434
+|33.416
+|3065
+|01626285
+|43.0244°N 83.6920°W
+|-
+|289
+|[[Kenosha, Wisconsin|Kenosha]]
+|[[Wisconsin]]
+|100150|99218
+|
+|
+|
+|42.5822°N 87.8456°W
+|}

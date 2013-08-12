@@ -1,0 +1,22 @@
+<div style='width:auto;'>
+  <div class="modal-header" >
+    <button type="button" class="close" data-dismiss="modal" ng-click="cancel()" aria-hidden="true">&times;</button>
+    <h4>{{title}}</h4>
+  </div>
+  <div class="modal-body">
+    <fieldset>
+      <label>initial context:</label>
+      <textarea type="text" ng-model="dialogModel.payload"
+                class="input-large"
+                style='width:100%;margin-right:10px;'
+                rows='8'
+                placeholder='{"property":"value"}'>
+      </textarea>
+    </fieldset>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" ng-click="cancel()">Cancel</button>
+    <button class="btn btn-primary" ng-click="submit(dialogModel)">Go!</button>
+  </div>
+
+</div>

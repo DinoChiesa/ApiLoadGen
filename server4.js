@@ -1,7 +1,7 @@
-// server3.js
+// server4.js
 // ------------------------------------------------------------------
 //
-// Job control server implemented using restify.
+// Job control server implemented using Express.  Migrated from restify.
 //
 //   GET /jobs
 //   POST /jobs
@@ -14,11 +14,15 @@
 //
 // You may have to do the following to run this code:
 //
-//    npm install restify
+//    npm install express sleep q assert http
+//
+// Additionally, the slimNodeHttpClient.js requires
+//
+//    npm install url util stream http https json-stringify-safe
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-02 15:22:46>
+// last saved: <2013-August-10 13:37:40>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -27,18 +31,24 @@
 // ------------------------------------------------------------------
 
 
-var restify = require('restify'),
-    assert = require('assert'),
+var assert = require('assert'),
     q = require ('q'),
     sleep = require('sleep'),
-    log = new Log(), 
-    server = restify.createServer(),
-    activeJobs = {}, pendingStop = {}, 
+    http = require('http'),
+    request = require('./slimNodeHttpClient.js'),
+    WeightedRandomSelector = require('./weightedRandomSelector.js'),
+    express = require('express'),
+    app = express(),
+    server,
+    citySelector,
+    log = new Log(),
+    activeJobs = {}, pendingStop = {},
     oneHourInMs = 60 * 60 * 1000,
     fiveMinutesInMs = 5 * 60 * 1000,
-    minSleepTimeInMs = 18000, 
-    defaultRunsPerHour = 60, 
-    modelSourceUrlPrefix = '/dino/loadgen1',
+    minSleepTimeInMs = 18000,
+    defaultRunsPerHour = 60,
+    isUrl = new RegExp('^https?://[a-z0-9\\.]+($|/)', 'i'),
+    modelSourceUrlPrefix = 'https://api.usergrid.com/dino/loadgen1',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
     reUuid = new RegExp(reUuidStr);
 
@@ -52,9 +62,10 @@ Log.prototype.write = function(str) {
 };
 
 
-function getModelClient(param) {
-  var authz, client, hdrs = {
-    'Accept' : 'application/json'
+function getModelOptions(param) {
+  var authz, options, hdrs = {
+    'Accept' : 'application/json',
+    'user-agent' : 'SlimHttpClient/1.0'
   };
 
   // This fn can be called with either an inbound request, or with a context.  The
@@ -71,23 +82,14 @@ function getModelClient(param) {
       }
     }
   }
-
-  client = restify.createJsonClient({
-    url: 'https://api.usergrid.com/',
+  return {
     headers: hdrs
-  });
-
-  return client;
+  };
 }
 
-
-function noop() {}
-
-// function getUuidFinder(uuid) {
-//   return function (elt, ix, a) {
-//     return (elt.uuid === uuid);
-//   };
-// }
+function getType(obj) {
+  return Object.prototype.toString.call(obj);
+}
 
 function copyHash(obj) {
     if (null === obj || "object" != typeof obj) {return obj;}
@@ -111,9 +113,9 @@ function dumpRequest(req) {
 }
 
 
-function logTransaction(e, req, res, obj, payload) {
-  console.log('\n' + req.method + ' ' + req.path);
-  console.log('headers: ' + JSON.stringify(req._headers, null, 2));
+function logTransaction(e, ignoreThis, res, obj, payload) {
+  //console.log('\n' + req.method + ' ' + req.path);
+  //console.log('headers: ' + JSON.stringify(req._headers, null, 2));
   if (payload) {
     console.log('payload: ' + JSON.stringify(payload, null, 2));
   }
@@ -125,28 +127,43 @@ function logTransaction(e, req, res, obj, payload) {
 
 
 function retrieveAllJobs(ctx) {
-  var deferredPromise = q.defer(), 
-      // I am getting an ECONNRESET on the restify client after a long period of running. 
-      // In an attempt to avoid that, I'm not re-using the old client. 
-      //client = ctx.modelConnection.client || getModelClient(ctx);
-      client = getModelClient(ctx);
+  var deferredPromise = q.defer(),
+      requestOpts = getModelOptions(ctx);
 
   log.write('retrieveAllJobs');
-  client.get(modelSourceUrlPrefix + '/jobs', function(e, httpReq, httpResp, obj) {
-    //logTransaction(e, httpReq, httpResp, obj);
+  requestOpts.uri = modelSourceUrlPrefix + '/jobs';
+  request.get(requestOpts, function(e, httpResp, body) {
+    var obj;
     if (e) {
       deferredPromise.resolve({
         state: {job:0, stage:'retrieve', error:e},
-        model: {jobs:{}}, 
-        modelConnection: {authz:ctx.modelConnection.authz}
+        model: {jobs:{}},
+        modelConnection: {authz: ctx.modelConnection.authz}
       });
     }
     else {
-      deferredPromise.resolve({
-        state: {job:0, stage:'retrieve'},
-        model: {jobs:obj.entities}, 
-        modelConnection: {client:client, authz:ctx.modelConnection.authz}
-      });
+      try {
+        obj = JSON.parse(body);
+      }
+      catch (exc1) {
+        obj = null;
+      }
+
+      if (obj && obj.entities && obj.entities[0]) {
+        deferredPromise.resolve({
+          state: {job:0, stage:'retrieve'},
+          model: {jobs: obj.entities},
+          modelConnection: {authz:ctx.modelConnection.authz}
+        });
+      }
+      else {
+        console.log('non response? ' + body);
+        deferredPromise.resolve({
+          state: {job:0, stage:'nojob', jobid:ctx.jobid},
+          model: {},
+          modelConnection: { authz: ctx.modelConnection.authz }
+        });
+      }
     }
   });
   return deferredPromise.promise;
@@ -154,40 +171,46 @@ function retrieveAllJobs(ctx) {
 
 
 function retrieveOneJob(ctx) {
-  var deferredPromise = q.defer(), 
-      // I am getting an ECONNRESET on the restify client after a long period of running. 
-      // In an attempt to avoid that, I'm not re-using the old client. 
-      //client = ctx.modelConnection.client || getModelClient(ctx);
-      client = getModelClient(ctx);
+  var deferredPromise = q.defer(),
+      requestOpts = getModelOptions(ctx);
 
   log.write(ctx.jobid + ' retrieveOneJob');
-  client.get(modelSourceUrlPrefix + '/jobs/' + ctx.jobid, function(e, httpReq, httpResp, obj) {
-    //logTransaction(e, httpReq, httpResp, obj);
+  requestOpts.uri = modelSourceUrlPrefix + '/jobs/' + ctx.jobid;
+  request.get(requestOpts, function(e, httpResp, body) {
+    var obj;
     if (e) {
       console.log('error: ' + JSON.stringify(e, null, 2));
       deferredPromise.resolve({
         state: {job:0, stage:'nojob', jobid:ctx.jobid, error:e},
-        model: {}, 
+        model: {},
         modelConnection: { authz: ctx.modelConnection.authz }
-        // Leave modelConnection.client undefined.
-        // It will be re-initialized next time through. 
-      });
-    }
-    else if (obj.entities && obj.entities[0]) {
-      deferredPromise.resolve({
-        state: {job:0, stage:'retrieve', jobid:ctx.jobid},
-        model: {jobs:obj.entities}, 
-        modelConnection: {authz: ctx.modelConnection.authz, client: client}
       });
     }
     else {
-      console.log('non response? ' + JSON.stringify(obj, null, 2));
-      deferredPromise.resolve({
-        state: {job:0, stage:'nojob', jobid:ctx.jobid},
-        model: {}, 
-        modelConnection: { authz: ctx.modelConnection.authz }
-      });
+      try {
+        obj = JSON.parse(body);
+      }
+      catch (exc1) {
+        obj = null;
+      }
+
+      if (obj && obj.entities && obj.entities[0]) {
+        deferredPromise.resolve({
+          state: {job:0, stage:'retrieve', jobid:ctx.jobid},
+          model: {jobs: obj.entities},
+          modelConnection: { authz: ctx.modelConnection.authz }
+        });
+      }
+      else {
+        console.log('non response? ' + JSON.stringify(body, null, 2));
+        deferredPromise.resolve({
+          state: {job:0, stage:'nojob', jobid:ctx.jobid},
+          model: {},
+          modelConnection: { authz: ctx.modelConnection.authz }
+        });
+      }
     }
+
   });
   return deferredPromise.promise;
 }
@@ -197,8 +220,15 @@ function retrieveRequestsForOneSequence(ctx) {
   return (function (context) {
     var deferred, s, url,
         state = context.state,
-        model = context.model, 
-        client = context.modelConnection.client;
+        model = context.model,
+        options = getModelOptions(context);
+
+    // validate
+    if (!model.jobs[state.job].sequences) {
+      state.job++;
+      log.write('??no sequences');
+      return q.resolve(context);
+    }
 
     // check for termination
     if (state.currentSequence == model.jobs[state.job].sequences.length) {
@@ -208,19 +238,32 @@ function retrieveRequestsForOneSequence(ctx) {
 
     deferred = q.defer();
     s = model.jobs[state.job].sequences[state.currentSequence];
-    url = modelSourceUrlPrefix + s.metadata.connections.references;
+    if (s && s.metadata && s.metadata.connections && s.metadata.connections.references) {
+      url = modelSourceUrlPrefix + s.metadata.connections.references;
 
-    log.write('retrieveRequestsForOneSequence');
-    client.get(url, function(e, httpReq, httpResp, obj) {
-      //logTransaction(e, httpReq, httpResp, obj);
-      s.requests = obj.entities;
+      log.write('retrieveRequestsForOneSequence');
+      options.uri = url;
+      request.get(options, function(e, httpResp, body) {
+        var obj;
+        try {
+          obj = JSON.parse(body);
+        }
+        catch (exc1) {
+          obj = null;
+        }
+        s.requests = (obj && obj.entities && obj.entities[0]) ? obj.entities : null;
+        state.currentSequence++;
+        deferred.resolve(context);
+      });
+    }
+    else {
+      s.requests = [];
       state.currentSequence++;
       deferred.resolve(context);
-    });
+    }
 
     return deferred.promise
       .then(retrieveRequestsForOneSequence);
-
   }(ctx));
 }
 
@@ -228,12 +271,11 @@ function retrieveRequestsForOneSequence(ctx) {
 function retrieveLoadProfileForJob(ctx) {
   return (function (context) {
     var deferred,
-        client = context.modelConnection.client, 
+        options = getModelOptions(context),
         model = context.model,
         jobs = model.jobs,
         job = jobs ? jobs[0] : null,
-        query = "select * where type = 'loadprofile'",
-        url;
+        query = "select * where type = 'loadprofile'";
 
     log.write('retrieveLoadProfileForJob');
 
@@ -242,12 +284,18 @@ function retrieveLoadProfileForJob(ctx) {
     }
 
     deferred = q.defer();
-    url = modelSourceUrlPrefix +
+    options.uri = modelSourceUrlPrefix +
       job.metadata.connections.uses + '?ql=' + encodeURIComponent(query);
 
-    client.get(url, function(e, httpReq, httpResp, obj) {
-      //logTransaction(e, httpReq, httpResp, obj);
-      if (obj.entities && obj.entities[0]) {
+    request.get(options, function(e, httpResp, body) {
+      var obj;
+      try {
+        obj = JSON.parse(body);
+      }
+      catch (exc1) {
+        obj = null;
+      }
+      if (obj && obj.entities && obj.entities[0]) {
         context.model.jobs[0].loadprofile = obj.entities[0].perHourCounts;
       }
       deferred.resolve(context);
@@ -263,12 +311,12 @@ function retrieveLoadProfileForJob(ctx) {
 function retrieveSequencesForJob(ctx) {
   return (function (context) {
     var deferred,
-        client = context.modelConnection.client, 
+        options = getModelOptions(context),
         query = "select * where type = 'sequence'",
         state = context.state,
         model = context.model,
         jobs = model.jobs,
-        j, url;
+        j;
 
     // check for termination
     if ((typeof model.jobs == "undefined") || (state.job == model.jobs.length)) {
@@ -280,17 +328,25 @@ function retrieveSequencesForJob(ctx) {
     log.write('retrieveSequencesForJob');
     j = jobs[state.job];
 
-    url = modelSourceUrlPrefix +
+    options.uri = modelSourceUrlPrefix +
       j.metadata.connections.includes + '?ql=' + encodeURIComponent(query);
 
-    client.get(url, function(e, httpReq, httpResp, obj) {
-      //logTransaction(e, httpReq, httpResp, obj);
+    request.get(options, function(e, httpResp, body) {
+      var obj;
       if (e) {
         log.write('error: ' + JSON.stringify(e, null, 2));
         j.sequences = [];
       }
       else {
-        j.sequences = obj.entities;
+        try {
+          obj = JSON.parse(body);
+        }
+        catch (exc1) {
+          obj = null;
+        }
+        if (obj && obj.entities && obj.entities[0]) {
+          j.sequences = obj.entities;
+        }
       }
       context.state.currentSequence = 0;
       deferred.resolve(context);
@@ -337,7 +393,7 @@ function evalTemplate(ctx, code) {
 
   // log.write('eval: ' + code);
   // log.write('ctx: ' + JSON.stringify(extractContext, null, 2));
-  // TODO: cache this? 
+  // TODO: cache this?
   // create the fn signature
   for (var prop in extractContext) {
     if (extractContext.hasOwnProperty(prop)) {
@@ -420,26 +476,16 @@ function invokeOneRequest(context) {
       sequence = model.jobs[state.job].sequences[state.sequence],
       job = model.jobs[state.job],
       req = sequence.requests[state.request],
-      suffix = req.pathSuffix,
-      match = re.exec(req.pathSuffix),
+      url = req.pathSuffix || req.url,
+      match = re.exec(url),
       actualPayload,
-      client, p = q.resolve(context);
+      headers = (job.defaultProperties && job.defaultProperties.headers) ? job.defaultProperties.headers : {},
+      reqOptions = { headers: headers},
+      p = q.resolve(context);
 
   log.write(job.uuid + ' invokeOneRequest');
 
-  // 1. initialize the restclient as necessary
-  if (state.job === 0 && state.request === 0 && state.sequence === 0 && state.iteration === 0) {
-    // initialize restify client
-    state.headerInjector = noop;
-    state.restClient = restify.createJsonClient({
-      url: job.defaultProperties.scheme + '://' + job.defaultProperties.host,
-      headers: job.defaultProperties.headers,
-      signRequest : function(r) { return state.headerInjector(r);}
-    });
-  }
-  client = state.restClient;
-
-  // 2. delay as appropriate
+  // 1. delay as appropriate
   if (req.delayBefore) {
     p = p.then(function(ctx){
       sleep.usleep(req.delayBefore * 1000);
@@ -447,50 +493,44 @@ function invokeOneRequest(context) {
     });
   }
 
-  // 3. evaluate the pathsuffix if required. 
+  // 2. evaluate the url path if required.
   if (match) {
-    // The pathsuffix includes a replacement string.
+    // The urlpath includes a replacement string.
     // Must evaluate the replacement within the promise chain.
     p = p.then(function(ctx){
-      suffix = match[1] + evalTemplate(ctx, match[2]) + match[3];
+      url = match[1] + evalTemplate(ctx, match[2]) + match[3];
       return ctx;
     });
   }
 
-  // 4. conditionally set the header injector to inject any custom headers for
-  // this request. 
+  // 3. conditionally set additional headers for this request.
   if (req.headers) {
-    // set a new headerInjector for our purpose
     p = p.then(function(ctx) {
-      ctx.state.headerInjector = function (clientRequest) {
-        // The header is mutable using the setHeader(name, value),
-        // getHeader(name), removeHeader(name)
-        var match, value;
-        for (var hdr in req.headers) {
-          if (req.headers.hasOwnProperty(hdr)) {
-            match = re.exec(req.headers[hdr]);
-            if (match) {
-              value = match[1] + evalTemplate(ctx, match[2]) + match[3];
-            }
-            else {
-              value = req.headers[hdr];
-            }
-            //log.write('setHeader(' + hdr + ',' + value + ')');
-            clientRequest.setHeader(hdr, value);
+      var match, value;
+      for (var hdr in req.headers) {
+        if (req.headers.hasOwnProperty(hdr)) {
+          match = re.exec(req.headers[hdr]);
+          if (match) {
+            value = match[1] + evalTemplate(ctx, match[2]) + match[3];
           }
+          else {
+            value = req.headers[hdr];
+          }
+          //log.write('setHeader(' + hdr + ',' + value + ')');
+          reqOptions.headers[hdr.toLowerCase()] = value;
         }
-      };
+      }
       return ctx;
     });
   }
 
-  // 5. actually do the http call, and the subsequent extracts
+  // 4. actually do the http call, and the subsequent extracts
   p = p.then(function(ctx) {
     var deferredPromise = q.defer(),
-        method = (req.method)? req.method.toLowerCase() : "get", 
-        respHandler = function(e, httpReq, httpResp, obj) {
-          var i, L, ex;
-          //logTransaction(e, httpReq, httpResp, obj);
+        city,
+        method = (req.method)? req.method.toLowerCase() : "get",
+        respCallback = function(e, httpResp, body) {
+          var i, L, ex, obj;
           if (e) {
             log.write(e);
           }
@@ -506,7 +546,10 @@ function invokeOneRequest(context) {
               log.write(ex.description);
               // actually invoke the compiled fn
               try {
-                ctx.state.extracts[ex.valueRef] = ex.compiledFn(obj);
+                // sometimes the body is already parsed into an object?
+                obj = Object.prototype.toString.call(body);
+                obj = (obj === '[object String]') ? JSON.parse(body) : body;
+                ctx.state.extracts[ex.valueRef] = ex.compiledFn(obj, httpResp.headers);
                 log.write(ex.valueRef + ':=' + JSON.stringify(ctx.state.extracts[ex.valueRef]));
               }
               catch (exc1) {
@@ -519,23 +562,25 @@ function invokeOneRequest(context) {
           deferredPromise.resolve(ctx);
         };
 
-    if (method === "post") {
-      log.write('post ' + suffix);
+    reqOptions.method = method;
+    reqOptions.uri =
+      (isUrl.test(url)) ? url :
+      job.defaultProperties.scheme + '://' + job.defaultProperties.host + url;
+
+    // Select a random city to insert into the headers.
+    // In the future this will be X-Forwarded-For.
+    city = citySelector.select()[0];
+    reqOptions.headers['x-random-city'] = city.name + '/' + city.state;
+
+    log.write(method + ' ' + reqOptions.uri);
+
+    if (method === "post" || method === "put") {
       actualPayload = expandEmbeddedTemplates(ctx, req.payload);
-      client.post(suffix, actualPayload, respHandler);
+      reqOptions.json = actualPayload;
+      request(reqOptions, respCallback);
     }
-    else if (method === "put") {
-      log.write('put ' + suffix);
-      actualPayload = expandEmbeddedTemplates(ctx, req.payload);
-      client.put(suffix, actualPayload, respHandler);
-    }
-    else if (method === "get") {
-      log.write('get ' + suffix);
-      client.get(suffix, respHandler);
-    }
-    else if (method === "delete") {
-      log.write('delete ' + suffix);
-      client.delete(suffix, respHandler);
+    else if (method === "get" || method === "delete") {
+      request(reqOptions, respCallback);
     }
     else {
       assert.fail(r.method,"get|post|put|delete", "unsupported method", "<>");
@@ -543,16 +588,37 @@ function invokeOneRequest(context) {
     return deferredPromise.promise;
   });
 
-  // 6. conditionally reset the headerInjector
-  if (req.headers) {
-    p = p.then(function(ctx) {     
-      ctx.state.headerInjector = noop; 
-      return ctx;
-    });
-  }
-
   return p;
 }
+
+function retrieveCities(ctx) {
+  var deferredPromise = q.defer(),
+      options = {
+        uri: modelSourceUrlPrefix + '/cities?limit=1000',
+        method: 'get',
+        headers: {
+          'Accept' : 'application/json',
+          'user-agent' : 'SlimHttpClient/1.0'
+        }
+      };
+  request(options, function(e, httpResp, body) {
+    var a, type, cities;
+    if (e) {
+      console.log('retrieving cities, error: ' + e);
+    }
+    else {
+      type = getType(body);
+      if (type === "[object String]") { body = JSON.parse(body); }
+      cities = body.entities.map(function(elt) {
+        return [ elt, Number(elt.pop2010) ];
+      });
+      citySelector = new WeightedRandomSelector(cities);
+    }
+    deferredPromise.resolve(ctx);
+  });
+  return deferredPromise.promise;
+}
+
 
 
 function runJob(context) {
@@ -581,7 +647,10 @@ function runJob(context) {
     log.write('++ Iteration');
     return q.resolve(context).then(runJob);
   }
-  if (state.iteration === state.I[state.sequence]) {
+  if ( !state.I[state.sequence] && state.sequence < state.S) {
+    state.I[state.sequence] = resolveNumeric(job.sequences[state.sequence].iterations);
+  }
+  if (state.I[state.sequence] && state.iteration === state.I[state.sequence]) {
     state.iteration = 0;
     state.sequence++;
     log.write('++ Sequence');
@@ -593,11 +662,11 @@ function runJob(context) {
     return q.resolve(context).then(setWakeup, trackFailure);
   }
 
-  // need to verify that all properties are valid. 
-  // Sometimes they are not due to intermittent data retrieval errors. 
+  // need to verify that all properties are valid.
+  // Sometimes they are not due to intermittent data retrieval errors.
   if ( ! (job.sequences && job.sequences.length && (state.sequence < job.sequences.length) &&
-      job.sequences[state.sequence].requests && job.sequences[state.sequence].requests.length)) {
-    return q.resolve(context)
+          job.sequences[state.sequence].requests && job.sequences[state.sequence].requests.length)) {
+            return q.resolve(context)
       .then(function(c){
         log.write('state error');
         return c;
@@ -605,7 +674,7 @@ function runJob(context) {
       .then(setWakeup);
   }
 
-  // set and log counts 
+  // set and log counts
   state.S = job.sequences.length;
   state.R = job.sequences[state.sequence].requests.length;
   if ( ! state.I[state.sequence]) {
@@ -617,7 +686,15 @@ function runJob(context) {
 
 
   // if we arrive here we're doing a request, implies an async call
-  p = q.resolve(context).then(invokeOneRequest, trackFailure);
+  p = q.resolve(context);
+
+  // retrieveCities if necessary
+  if (!citySelector) {
+    p = p.then(retrieveCities);
+  }
+
+  // do the call
+  p = p.then(invokeOneRequest, trackFailure);
 
   // sleep if necessary
   sequence = job.sequences[state.sequence];
@@ -636,11 +713,18 @@ function runJob(context) {
 
 
 function initializeJobRunAndKickoff(context) {
-  var now = (new Date()).valueOf();
+  var now = (new Date()).valueOf(), error;
   log.write("initializeJobRunAndKickoff");
   // initialize context for running
-  if ( ! context.model.jobs) {
-    log.write("-no job-");
+  if (!context.model.jobs || !context.model.jobs.length) {error = '-no jobs-';}
+  else if (!context.model.jobs[0]) {error = '-no job-';}
+  else if (!context.model.jobs[0].sequences ||
+      !context.model.jobs[0].sequences.length) {error = '-no sequences-';}
+  else if (!context.model.jobs[0].sequences[0].requests ||
+      !context.model.jobs[0].sequences[0].requests.length) {error = '-no requests-';}
+
+  if (error) {
+    log.write(error);
     context.state.sequence = 0;
     context.state.start = now;
     // nothing more to do?
@@ -653,13 +737,11 @@ function initializeJobRunAndKickoff(context) {
     // should stop.
     if (context.state.error) {
       if (context.state.error.statusCode === 404) {
-        return q.resolve(context); 
+        return q.resolve(context); // and stop
       }
-      // else, get a new client next time, and attempt to recover.
-      delete context.modelConnection.client;
-      return q.resolve(context).then(setWakeup); 
+      return q.resolve(context).then(setWakeup);
     }
-    return q.resolve(context).then(setWakeup); 
+    return q.resolve(context).then(setWakeup);
   }
 
   context.state = {
@@ -679,7 +761,7 @@ function initializeJobRunAndKickoff(context) {
 }
 
 
-// setWakeup - schedule the next wakeup for a job, after it has completed. 
+// setWakeup - schedule the next wakeup for a job, after it has completed.
 function setWakeup(context) {
   var jobid,
       initialExContext = context.initialExtractContext,
@@ -719,14 +801,6 @@ function setWakeup(context) {
   activeJobs[jobid] =
     setTimeout(function () {
       var startMoment = new Date().valueOf();
-      // // diagnose intermittent ECONNRESET errors when contacting App Services
-      // if (context.modelConnection) {
-      //   console.log('modelConnection: { authz: ' + context.modelConnection.authz + ',\n' +
-      //             '  client: ' + context.modelConnection.client.toString() + '}');
-      // }
-      // else {
-      //   console.log('NO modelConnection?');
-      // }
       activeJobs[jobid] = 0; // mark this job as "running" (not waiting)
       log.write(jobid + ' awake');
       q.resolve({jobid:jobid, modelConnection: context.modelConnection})
@@ -740,8 +814,11 @@ function setWakeup(context) {
           return ctx;
         })
         .then(initializeJobRunAndKickoff)
-        .done(function(){}, 
-              function(e){log.write('unhandled error: ' + e);});
+        .done(function(){},
+              function(e){
+                log.write('unhandled error: ' + e);
+                log.write(e.stack);
+              });
     }, sleepTimeInMs);
   return context;
 }
@@ -749,33 +826,69 @@ function setWakeup(context) {
 
 // ******************************************************************
 
-server.use(restify.bodyParser({ mapParams: false })); // put post payload in req.body
-server.use(restify.queryParser());
-//server.use(restify.CORS());
-server.use(restify.fullResponse()); // I think reqd for CORS success
-
-function unknownMethodHandler(req, res) {
+function myCorsHandler(req, res, next) {
   // handle CORS
   if (req.method.toLowerCase() === 'options') {
-    log.write('on OPTIONS, origin: ' + req.headers.origin);
-    //log.write('     request-hdrs: ' + req.headers['Access-Control-Request-Headers']);
-    log.write('     request-hdrs: ' + JSON.stringify(req.headers, null, 2));
-    // var allowedHeaders = ['Accept', 'Authorization', 'Origin', 'Referer', 
+    // log.write('on OPTIONS, origin: ' + req.headers.origin);
+    // log.write('     request-hdrs: ' + JSON.stringify(req.headers, null, 2));
+    // var allowedHeaders = ['Accept', 'Authorization', 'Origin', 'Referer',
     //                       'User-Agent', 'X-Requested-With'];
-    var allowedHeaders = ['Authorization','Content-Type','X-Requested-With'];
-    //if (res.methods.indexOf('OPTIONS') === -1) res.methods.push('OPTIONS');
+    var allowedHeaders = ['authorization','accept','origin','content-type','x-requested-with'];
 
     res.header('Access-Control-Allow-Credentials', true);
     res.header('Access-Control-Allow-Headers', allowedHeaders.join(', '));
     res.header('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT');
     res.header('Access-Control-Allow-Origin', req.headers.origin);
     res.header('Access-Control-Max-Age', '60'); // delta seconds
-    return res.send(204);
+    res.send(204);
   }
-  return res.send(new restify.MethodNotAllowedError());
+  else if (req.headers.origin) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+    next();
+  }
+  else next();
 }
 
-server.on('MethodNotAllowed', unknownMethodHandler);
+app.configure(function() {
+  // app.use(function(req, res, next) {
+  //   res.on('header', function() {
+  //     console.log('HEADERS GOING TO BE WRITTEN');
+  //   });
+  //   next();
+  // });
+  app.use(myCorsHandler);
+  app.use(express.bodyParser());
+  app.use(express.json());
+});
+
+// server.use(restify.bodyParser({ mapParams: false })); // put post payload in req.body
+// server.use(restify.queryParser());
+// //server.use(restify.CORS());
+// server.use(restify.fullResponse()); // I think reqd for CORS success
+//
+// function unknownMethodHandler(req, res) {
+//   // handle CORS
+//   if (req.method.toLowerCase() === 'options') {
+//     log.write('on OPTIONS, origin: ' + req.headers.origin);
+//     //log.write('     request-hdrs: ' + req.headers['Access-Control-Request-Headers']);
+//     log.write('     request-hdrs: ' + JSON.stringify(req.headers, null, 2));
+//     // var allowedHeaders = ['Accept', 'Authorization', 'Origin', 'Referer',
+//     //                       'User-Agent', 'X-Requested-With'];
+//     var allowedHeaders = ['Authorization','Content-Type','X-Requested-With'];
+//     //if (res.methods.indexOf('OPTIONS') === -1) res.methods.push('OPTIONS');
+//
+//     res.header('Access-Control-Allow-Credentials', true);
+//     res.header('Access-Control-Allow-Headers', allowedHeaders.join(', '));
+//     res.header('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT');
+//     res.header('Access-Control-Allow-Origin', req.headers.origin);
+//     res.header('Access-Control-Max-Age', '60'); // delta seconds
+//     return res.send(204);
+//   }
+//   return res.send(new restify.MethodNotAllowedError());
+// }
+//
+// server.on('MethodNotAllowed', unknownMethodHandler);
+
 
 // server.post('/jobs'), function(req, res, next) {
 //   // TODO: implement creation of new jobs
@@ -787,23 +900,43 @@ server.on('MethodNotAllowed', unknownMethodHandler);
 // });
 //
 
-server.get('/users/:userid', function(req, res, next) {
-  var client = getModelClient(req);
+app.get('/users/:userid', function(req, res, next) {
+  var options = getModelOptions(req);
   console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
-  log.write('outbound GET ' + req.url);
-  client.get(modelSourceUrlPrefix + req.url, function(e, httpReq, httpResp, obj) {
-    logTransaction(e, httpReq, httpResp, obj);
-    if (e || !obj.entities) {
-      res.send(httpResp.statusCode || 500, {status:'error'});
+  options.uri = modelSourceUrlPrefix + req.url;
+  log.write('outbound GET ' + options.uri);
+  request.get(options, function(e, httpResp, body) {
+    var obj, responseBody;
+    try {
+      obj = JSON.parse(body);
+    }
+    catch (exc1) {
+      obj = null;
+    }
+    logTransaction(e, null, httpResp, obj);
+    res.setHeader('Content-Type', 'application/json');
+    // var msg = '';
+    // Object.keys(httpResp).map(function (elt) {
+    //   if (msg !== '') {msg += ',\n';}
+    //   msg += elt;
+    // });
+    // log.write('keys(httpResp): ' + msg);
+    if (e || !obj || !obj.entities || !obj.entities[0] || !obj.entities[0].type || obj.entities[0].type !== 'user') {
+      responseBody = {status:'error'};
+      if (obj['error_description']) {
+        responseBody.message = obj['error_description'];
+      }
+      res.send(httpResp.statusCode, responseBody);
     }
     else {
       res.send(obj);
     }
-    return next();
+    //return next();
+    return;
   });
 });
 
-server.get('/jobs/:jobid', function(req, res, next) {
+app.get('/jobs/:jobid', function(req, res, next) {
   var jobid = req.params.jobid,
       match = reUuid.exec(req.params.jobid);
 
@@ -815,42 +948,79 @@ server.get('/jobs/:jobid', function(req, res, next) {
       .then(function(ctx) {
         var job = ctx.model.jobs[0];
         job.status = (activeJobs.hasOwnProperty(req.params.jobid)) ? "running" : "stopped";
-        res.send(job);
+        res.json(job);
         next();
         return true;
       })
       .done();
   }
   else {
-    res.send(400, {status:"fail", message:'malformed uuid'});
-    return next();
+    res.json(400, {status:"fail", message:'malformed uuid'});
+    //return next();
+    return;
   }
 });
 
-server.get('/jobs', function(req, res, next) {
+app.get('/jobs', function(req, res, next) {
   log.write('GET jobs');
-  console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
+  //console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
   q.resolve({modelConnection:{authz:req.headers.authorization}})
     .then(retrieveAllJobs)
     .then(retrieveSequencesForJob)
     .then(function(ctx) {
       ctx.model.jobs.forEach(function (element, index, array){
-        element.status = (activeJobs.hasOwnProperty(element.uuid)) ? 
+        element.status = (activeJobs.hasOwnProperty(element.uuid)) ?
           "running" : "stopped";
       });
-      res.send(ctx.model.jobs);
-      next();
+      res.json(ctx.model.jobs);
+      //next();
       return true;
     })
     .done();
 });
 
+app.post('/token', function(req, res, next) {
+  var body = req.body;
+  log.write('POST token');
+  q.resolve(body)
+    .then(function(bdy){
+      var deferredPromise = q.defer(),
+          requestOpts = {
+            uri: modelSourceUrlPrefix + '/token',
+            method: 'post',
+            json: bdy,
+            headers: {
+              accept : 'application/json',
+              'user-agent' : 'SlimHttpClient/1.0'
+            }
+          };
+      //log.write('requesting ' + JSON.stringify(requestOpts,null,2));
+      request(requestOpts, function(e, httpResp, body) {
+        if (e) {
+          log.write('error?: ' + e);
+          log.write('error?: ' + JSON.stringify(e,null,2));
+          deferredPromise.resolve({status: 500,
+                                   body:JSON.stringify(e,null,2)});
+        }
+        else {
+          deferredPromise.resolve({status: httpResp.statusCode, body:body});
+        }
+      });
+      return deferredPromise.promise;
+    })
+    .done(function(obj) {
+      res.send(obj.status, obj.body);
+    });
+  //next();
+});
+
+
 // start and stop jobs
-server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
+app.post('/jobs/:jobid',
             function(req, res, next) {
               var jobid = req.params.jobid,
                   match = reUuid.exec(jobid),
-                  action = req.params.action,
+                  action = req.query.action,
                   timeoutId;
               log.write('POST jobs/' + jobid + ' action=' + action);
               // console.log('params: ' + JSON.stringify(req.params, null, 2));
@@ -859,20 +1029,17 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
               if (match) {
                 if (action == 'start') {
                   try {
-
                     if ( ! activeJobs.hasOwnProperty(jobid)) {
                       q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization}})
                         .then(retrieveOneJob)
                         .then(function(ctx){
                           // this response gets sent while the job is running
                           if ( ! ctx.model.jobs) {
-                            res.send({"status":"fail","message":"no job"});
+                            res.json({"status":"fail","message":"no job"});
                           }
                           else {
-                            res.send({"status":"ok"});
+                            res.json({"status":"ok"});
                           }
-                          // we have retrieved the job, so return to caller. 
-                          next();
                           return ctx;
                         })
                         .then(retrieveLoadProfileForJob)
@@ -883,14 +1050,16 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                           return ctx;
                         })
                         .then(initializeJobRunAndKickoff)
-                        .done(function(){}, 
-                              function(e){log.write('unhandled error: ' + e);});
+                        .done(function(){},
+                              function(e){
+                                log.write('unhandled error: ' + e);
+                                log.write(e.stack);
+                              });
                     }
                     else {
-                      res.send(400, {status:"fail",message:"that job is already  running"});
-                      return next();
+                      log.write('cannot start; job is alreadyrunning');
+                      res.json(400, {status:"fail",message:"that job is already running"});
                     }
-                    
                   }
                   catch (exc1) {
                     log.write('Exception: ' + exc1);
@@ -900,38 +1069,38 @@ server.post('/jobs/:jobid?action=:action', // RegExp here failed for me.
                   if (activeJobs.hasOwnProperty(jobid)) {
                     timeoutId = activeJobs[jobid];
                     // Either the timeoutId is a real timeoutId or it is zero.
-                    // The latter indicates the job is "currently running". 
+                    // The latter indicates the job is "currently running".
                     if (timeoutId) {
                       clearTimeout(timeoutId);
                       delete activeJobs[jobid];
                     }
                     else {
-                      // mark for pending stop. This is checked in runJob. 
+                      // mark for pending stop. This is checked in runJob.
                       pendingStop[jobid] = true;
                     }
                     log.write('stop job ' + jobid);
-                    res.send({status:"ok"});
-                    return next();
+                    res.json({status:"ok"});
                   }
                   else {
-                    res.send(400, {status:"fail", message:"that job is not currently running"});
-                    return next();
+                    log.write('cannot stop; job is not running');
+                    res.json(400, {status:"fail", message:"that job is not currently running"});
                   }
                 }
                 else {
-                  res.send(400, {status:"fail", message:'invalid action'});
-                  return next();
+                  log.write('invalid action');
+                  res.json(400, {status:"fail", message:'invalid action'});
                 }
               }
               else {
-                res.send(400, {status:"fail", message:'malformed jobid'});
-                return next();
+                log.write('bad job id');
+                res.json(400, {status:"fail", message:'malformed jobid'});
               }
             });
 
 // ------------------------------------------------------------------
+server = http.createServer(app);
 
-server.listen(8001, function() {
+server.listen(process.env.PORT || 8001, function() {
   log.write('=======================================================');
-  log.write('loadgen server start, listening: ' + server.url);
+  log.write('loadgen server start, listening: ' + server.address().port);
 });

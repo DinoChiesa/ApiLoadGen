@@ -1,0 +1,23 @@
+<div style='width:auto;'>
+  <div class="modal-header" >
+    <button type="button" class="close" data-dismiss="modal" ng-click="cancel()" aria-hidden="true">&times;</button>
+    <h4>Job {{job.name}}</h4>
+  </div>
+  <div class="modal-body">
+    <fieldset>
+      <label>Username:</label><input type="text" ng-model="dialogModel.username" placeholder="Username" required/>
+      <label>Password:</label><input type="password" ng-model="dialogModel.password" placeholder="Password" required/>
+
+      <div class="alert alert-error" ng-show="dialogModel.errorMessage">
+        <strong>{{dialogModel.errorMessage}}</strong>
+      </div>
+
+    </fieldset>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn" ng-click="cancel()">Cancel</button>
+    <button class="btn btn-primary" ng-click="save(job)">Save</button>
+  </div>
+
+</div>

@@ -1,0 +1,37 @@
+<div style="position:relative;">
+  <a class="btn btn-mini btn-info notes-button"
+     ng-click="toggleEdits($event)"
+     ng-mouseover="directiveMouseOver(item)"
+     ng-mouseleave="directiveMouseLeave(item)">
+    <i class="icon-edit icon-white"></i></a>
+  <div class="popover" ng-style="popoverStyle"
+       style="top:-28px; left:32px; z-index:9998; margin-top:0px; padding:10px; position:absolute; min-width:236px; width:auto;">
+    {{item.notes}}
+  </div>
+
+  <div class="popover editable-container editable-popup fade in right" ng-style="editBoxStyle"
+       style="top:-28px; left:32px; z-index:9999; margin-top:0px; position:absolute; width:auto;">
+    <div class="arrow" style="top:38px;"></div>
+    <div class="popover-inner">
+      <h3 class="popover-title">Edit Notes</h3>
+      <div class="popover-content">
+        <div class="control-group">
+          <div>
+            <div class="editable-input">
+              <textarea class="input-large" style="width:370px;" rows="5" ng-model="item.notes"></textarea>
+            </div>
+            <div class="editable-buttons">
+              <button class="btn btn-primary editable-submit" type="button" ng-click="acceptEdits($event)">
+                <i class="icon-ok icon-white"></i>
+              </button>
+              <button class="btn editable-cancel" type="button" ng-click="discardEdits($event)">
+                <i class="icon-remove"></i>
+              </button>
+            </div>
+          </div>
+          <div class="editable-error-block help-block" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
