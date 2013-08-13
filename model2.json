@@ -1,6 +1,7 @@
 {
   "name": "job7",
   "description": "Exercises APIs exposed by iControl",
+  "geoDistribution": 1,
   "defaultProperties": {
     "scheme": "http",
     "host": "demo18-test.apigee.net",
@@ -9,14 +10,14 @@
     }
   },
 
-  "loadprofiles" : [{ 
-    "name" : "loadprofile3", 
+  "loadprofiles" : [{
+    "name" : "loadprofile3",
     "perHourCounts" : [
-      44, 35, 40, 36, 27, 40, 40, 54, 
-      57, 62, 54, 61, 73, 70, 53, 50, 
+      44, 35, 40, 36, 27, 40, 40, 54,
+      57, 62, 54, 61, 73, 70, 53, 50,
       47, 62, 74, 88, 83, 77, 70, 51
-    ] 
-  }], 
+    ]
+  }],
 
   "sequences" : [
     {
@@ -33,14 +34,14 @@
         "payload" : {
           "username":"test",
           "password":"display"
-        }, 
+        },
         "delayBefore" : 0,
         "extracts" : [
           {
             "description" : "extract the login token",
             "fn" : "function(obj) {return obj.login.token;}",
             "valueRef" : "oauth_bearer_token"
-          }, 
+          },
           {
             "description" : "extract the user and site hrefs",
             "fn" : "function(obj) {return {user:obj.login.user.href,site:obj.login.site.href};}",
@@ -53,7 +54,7 @@
       "name" : "seqQuery",
       "description" : "query the user and site items",
       "iterations" : "1",
-      "requests" : [ 
+      "requests" : [
         {
           "name" : "retrieveUser",
           "description" : "query the user item",
@@ -61,7 +62,7 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 10
         },
         {
@@ -71,15 +72,15 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
-          "delayBefore" : 10, 
+          },
+          "delayBefore" : 10,
           "extracts" : [ {
             "description" : "extract the site-specific hrefs",
             "fn" : "function(obj) { return {provider:obj.provider.href,cmsInfo:obj.cmsInfo.href,network:obj.network.href, users:obj.siteUsers.href,address:obj.address.href} ;}",
             "valueRef" : "siteHrefs"
           }]
 
-        }, 
+        },
         {
           "name" : "queryAlarms",
           "description" : "query alarms",
@@ -87,9 +88,9 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 10
-        }, 
+        },
         {
           "name" : "queryImages",
           "description" : "query camera images",
@@ -97,9 +98,9 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 10
-        }, 
+        },
         {
           "name" : "querySecurityEvents",
           "description" : "query security events",
@@ -107,9 +108,9 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 10
-        }, 
+        },
         {
           "name" : "querySiteUsers",
           "description" : "query site users",
@@ -117,9 +118,9 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 10
-        }, 
+        },
         {
           "name" : "querySiteAddress",
           "description" : "query site address",
@@ -127,11 +128,11 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 10
         }
       ]
-    }, 
+    },
     {
       "description" : "logout",
       "name" : "seqLogout",
@@ -141,7 +142,7 @@
         "pathSuffix" : "/v1/ictrl/logout",
         "method" : "post",
         "headers" : {
-          "content-type" : "application/json", 
+          "content-type" : "application/json",
           "authorization" : "Bearer {oauth_bearer_token}"
         },
         "delayBefore" : 0

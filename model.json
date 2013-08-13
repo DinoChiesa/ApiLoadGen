@@ -2,6 +2,7 @@
   "type" : "job",
   "name": "job1",
   "description": "A simple load test to login to App Services, and perform some queries and updates",
+  "geoDistribution": 1,
   "defaultProperties": {
     "scheme": "https",
     "host": "cheeso-test.apigee.net",
@@ -10,15 +11,15 @@
     }
   },
 
-  "loadprofiles" : [{ 
-    "type" : "loadprofile", 
-    "name" : "loadprofile1", 
+  "loadprofiles" : [{
+    "type" : "loadprofile",
+    "name" : "loadprofile1",
     "perHourCounts" : [
-      44, 35, 40, 36, 27, 40, 40, 54, 
-      57, 62, 54, 61, 73, 70, 53, 50, 
+      44, 35, 40, 36, 27, 40, 40, 54,
+      57, 62, 54, 61, 73, 70, 53, 50,
       47, 62, 74, 88, 83, 77, 70, 51
-    ] 
-  }], 
+    ]
+  }],
 
   "sequences" : [
     {
@@ -38,7 +39,7 @@
           "grant_type":"password",
           "username":"{username}",
           "password":"{password}"
-        }, 
+        },
         "delayBefore" : 0,
         "extracts" : [{
           "description" : "extract the access token",
@@ -53,7 +54,7 @@
       "description" : "query all items then get one item at random, and do two updates",
       "iterations" : "Math.floor(Math.random() * 3 + 2)",
       "delayBetweenIterations" : 100,
-      "requests" : [ 
+      "requests" : [
         {
           "type" : "request",
           "name" : "retrieveItems",
@@ -61,7 +62,7 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 0,
           "extracts" : [{
             "description" : "extract the uuids of the returned entities",
@@ -77,7 +78,7 @@
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
-          }, 
+          },
           "delayBefore" : 40
         },
         {
@@ -86,7 +87,7 @@
           "description" : "update one randomly-selected item with a contrived complex value for a property",
           "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
           "method" : "put",
-          "delayBefore" : 30, 
+          "delayBefore" : 30,
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
           },

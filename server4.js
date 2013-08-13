@@ -22,7 +22,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-10 13:37:40>
+// last saved: <2013-August-13 10:41:13>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -49,10 +49,12 @@ var assert = require('assert'),
     defaultRunsPerHour = 60,
     isUrl = new RegExp('^https?://[a-z0-9\\.]+($|/)', 'i'),
     modelSourceUrlPrefix = 'https://api.usergrid.com/dino/loadgen1',
+    ipDatabase = 'https://api.usergrid.com/mukundha/testdata/cities',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
     reUuid = new RegExp(reUuidStr);
 
 function Log(id) { }
+
 
 Log.prototype.write = function(str) {
   var time = (new Date()).toString(), me = this;
@@ -87,17 +89,19 @@ function getModelOptions(param) {
   };
 }
 
+
 function getType(obj) {
   return Object.prototype.toString.call(obj);
 }
 
+
 function copyHash(obj) {
-    if (null === obj || "object" != typeof obj) {return obj;}
-    var copy = {};
-    for (var attr in obj) {
-        if (obj.hasOwnProperty(attr)) {copy[attr] = obj[attr];}
-    }
-    return copy;
+  if (null === obj || "object" != typeof obj) {return obj;}
+  var copy = {};
+  for (var attr in obj) {
+    if (obj.hasOwnProperty(attr)) {copy[attr] = obj[attr];}
+  }
+  return copy;
 }
 
 
@@ -569,8 +573,14 @@ function invokeOneRequest(context) {
 
     // Select a random city to insert into the headers.
     // In the future this will be X-Forwarded-For.
-    city = citySelector.select()[0];
-    reqOptions.headers['x-random-city'] = city.name + '/' + city.state;
+    //city = citySelector.select()[0];
+    if (job.hasOwnProperty('contrivedIp') && job.contrivedIp) {
+      reqOptions.headers['x-random-city'] = job.chosenCity;
+      reqOptions.headers['x-forwarded-for'] = job.contrivedIp;
+    }
+    else {
+      log.write('no contrived IP');
+    }
 
     log.write(method + ' ' + reqOptions.uri);
 
@@ -591,6 +601,7 @@ function invokeOneRequest(context) {
   return p;
 }
 
+
 function retrieveCities(ctx) {
   var deferredPromise = q.defer(),
       options = {
@@ -601,10 +612,13 @@ function retrieveCities(ctx) {
           'user-agent' : 'SlimHttpClient/1.0'
         }
       };
+
+  log.write('retrieveCities');
+
   request(options, function(e, httpResp, body) {
     var a, type, cities;
     if (e) {
-      console.log('retrieving cities, error: ' + e);
+      log.write('retrieveCities, error: ' + e);
     }
     else {
       type = getType(body);
@@ -613,12 +627,65 @@ function retrieveCities(ctx) {
         return [ elt, Number(elt.pop2010) ];
       });
       citySelector = new WeightedRandomSelector(cities);
+      log.write('retrieveCities done');
     }
     deferredPromise.resolve(ctx);
   });
   return deferredPromise.promise;
 }
 
+
+function chooseRandomIpFromRecord(rec) {
+  if (rec) {
+    var ranges = rec.ranges,
+        numRanges = ranges.length,
+        selectedRange = ranges[Math.floor(Math.random() * numRanges)],
+        start = parseInt(selectedRange[0], 10),
+        end = parseInt(selectedRange[1], 10),
+        index = Math.floor(Math.random()*(start-end)),
+        selected = start + index,
+        w =  Math.floor(( selected / 16777216 ) % 256),
+        x =  Math.floor(( selected / 65536    ) % 256),
+        y =  Math.floor(( selected / 256      ) % 256),
+        z =  Math.floor(( selected            ) % 256);
+    return w + "." + x + "." + y + "." + z ;
+  }
+  else return null;
+}
+
+
+function contriveIpAddress(context) {
+  var city = citySelector.select()[0],
+      ql = 'select * where city=\'' + city.name + '\'' ,
+      options = {
+        uri : ipDatabase + '?ql=' + encodeURIComponent(ql),
+        method: 'get',
+        headers: {
+          'Accept' : 'application/json',
+          'user-agent' : 'SlimHttpClient/1.0'
+        }
+      },
+      deferred = q.defer();
+
+  log.write('contriveIpAddress');
+
+  request(options, function(e, httpResp, body) {
+    var type;
+    if (e) {
+      log.write('contriveIpAddress, error: ' + e);
+    }
+    else {
+      type = Object.prototype.toString.call(body);
+      body = (type === '[object String]') ? JSON.parse(body) : body;
+      context.model.jobs[0].contrivedIp = chooseRandomIpFromRecord(body.entities[0]);
+      context.model.jobs[0].chosenCity = city.name;
+      log.write('contriveIpAddress: ' + city.name + ' ' + context.model.jobs[0].contrivedIp );
+    }
+    deferred.resolve(context);
+  });
+
+  return deferred.promise;
+}
 
 
 function runJob(context) {
@@ -688,9 +755,19 @@ function runJob(context) {
   // if we arrive here we're doing a request, implies an async call
   p = q.resolve(context);
 
-  // retrieveCities if necessary
-  if (!citySelector) {
-    p = p.then(retrieveCities);
+  // generate a random IP address if necessary
+  if (state.request === 0 && state.iteration === 0 && state.sequence === 0) {
+    if (!job.hasOwnProperty('geoDistribution') || job.geoDistribution == 0) {
+      if (!citySelector) {
+        p = p.then(retrieveCities);
+      }
+      p = p.then(contriveIpAddress);
+    }
+    else {
+      p = p.then(function(ctx){
+        log.write('no geo distribution');
+      });
+    }
   }
 
   // do the call
@@ -770,8 +847,10 @@ function setWakeup(context) {
       durationOfLastRun = now - context.state.start,
       runsPerHour, sleepTimeInMs;
 
+
   if (context.model.jobs && context.model.jobs[0]) {
     jobid = context.model.jobs[0].uuid;
+    delete context.model.jobs[0].contrivedIp;
   }
   else if (context.state.jobid) {
     jobid = context.state.jobid;
@@ -902,7 +981,7 @@ app.configure(function() {
 
 app.get('/users/:userid', function(req, res, next) {
   var options = getModelOptions(req);
-  console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
+  //console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
   options.uri = modelSourceUrlPrefix + req.url;
   log.write('outbound GET ' + options.uri);
   request.get(options, function(e, httpResp, body) {

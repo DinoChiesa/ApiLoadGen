@@ -55,8 +55,8 @@ Interesting Files
 * `parseCitiesPop.js`  
   a one-time use program to parse the txt file containing the list of US cities and population from wikipedia, and populate App Services with that data. 
 
-* `model.json`  
-  an example model file for use with etl1.js
+* `model.json` and `model2.json`  
+  example model files for use with etl1.js
 
 * `ui/index.htm`  
   an angularJS client that connects to the REST server to inquire as to the jobs avaiable, and the run status of each one. 
@@ -216,6 +216,7 @@ The job definition should look something like this example:
     {
       "name": "job2",
       "description": "Exercise APIs exposed by Sonoa",
+      "geoDistribution": 1,
       "defaultProperties": {
         "scheme": "https",
         "host": "demo18-test.apigee.net",
@@ -295,6 +296,11 @@ The job definition should look something like this example:
       ]
     }
 
+
+Most of these properties are self-explanatory. The geoDistribution
+property on the job specifies whether to simulate geo-distributed load
+as the job runs. Set this to zero if you do not want geo-distributed
+load.
 
 
 Some additional details:
