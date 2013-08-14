@@ -1,11 +1,14 @@
-//
 // weightedRandomSelector.js
 //
 // simple weighted random selector.
 //
-// Fri, 26 Jul 2013  11:14
+// Copyright © 2013 Dino Chiesa
+// All rights reserved.
 //
-
+// created: Fri, 26 Jul 2013  11:14
+// last saved: <2013-August-13 21:41:39>
+//
+// --------------------------------------------------------
 
 function WeightedRandomSelector(a) {
   // A must be an array of arrays. Each inner array is 2 elements,
