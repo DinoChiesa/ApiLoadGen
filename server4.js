@@ -20,7 +20,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-13 21:29:07>
+// last saved: <2013-August-14 07:01:40>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -678,9 +678,14 @@ function contriveIpAddress(context) {
     else {
       type = Object.prototype.toString.call(body);
       body = (type === '[object String]') ? JSON.parse(body) : body;
-      context.model.jobs[0].contrivedIp = chooseRandomIpFromRecord(body.entities[0]);
-      context.model.jobs[0].chosenCity = city.name;
-      log.write('contriveIpAddress: ' + city.name + ' ' + context.model.jobs[0].contrivedIp );
+      if (body.entities && body.entities[0]) {
+        context.model.jobs[0].contrivedIp = chooseRandomIpFromRecord(body.entities[0]);
+        context.model.jobs[0].chosenCity = city.name;
+        log.write('contriveIpAddress: ' + city.name + ' ' + context.model.jobs[0].contrivedIp);
+      }
+      else {
+        log.write('contriveIpAddress: no body entities');
+      }
     }
     deferred.resolve(context);
   });
