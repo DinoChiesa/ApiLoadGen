@@ -20,7 +20,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-13 20:24:40>
+// last saved: <2013-August-13 21:00:14>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -481,7 +481,7 @@ function invokeOneRequest(context) {
       sequence = model.jobs[state.job].sequences[state.sequence],
       job = model.jobs[state.job],
       req = sequence.requests[state.request],
-      url = req.pathSuffix || req.url,
+      url = req.url || req.pathSuffix,
       match = re.exec(url),
       actualPayload,
       headers = (job.defaultProperties && job.defaultProperties.headers) ? job.defaultProperties.headers : {},
