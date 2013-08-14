@@ -13,7 +13,7 @@
 //     npm install url util stream http https json-stringify-safe
 //
 // created: Fri Aug  2 21:21:03 2013
-// last saved: <2013-August-07 17:30:21>
+// last saved: <2013-August-13 21:29:58>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -27,7 +27,7 @@ var http = require('http'),
     url = require('url'),
     util = require('util'),
     safeStringify = require('json-stringify-safe'),
-    isUrl = new RegExp('^https?://[a-z0-9\\.]+($|/)', 'i'),
+    isUrl = new RegExp('^https?://[-a-z0-9\\.]+($|/)', 'i'),
 
     debug = (/\brequest\b/.test(process.env.NODE_DEBUG)) ?
   function() { console.error('REQUEST %s', util.format.apply(util, arguments)); } :

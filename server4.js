@@ -20,7 +20,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-13 21:00:14>
+// last saved: <2013-August-13 21:29:07>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -44,7 +44,7 @@ var assert = require('assert'),
     fiveMinutesInMs = 5 * 60 * 1000,
     minSleepTimeInMs = 18000,
     defaultRunsPerHour = 60,
-    isUrl = new RegExp('^https?://[a-z0-9\\.]+($|/)', 'i'),
+    isUrl = new RegExp('^https?://[-a-z0-9\\.]+($|/)', 'i'),
     modelSourceUrlPrefix = 'https://api.usergrid.com/dino/loadgen1',
     ipDatabase = 'https://api.usergrid.com/mukundha/testdata/cities',
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
