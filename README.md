@@ -150,9 +150,9 @@ In addition to the data access APIs shown above, there are a few job control API
    application/json containing the initial context for the job.
    Example:
 
-    curl -i -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"
-        -H "Content-Type: application/json"
-        -d '{"username":"Larry", "password" : "HopefulPressue"}'
+        curl -i -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"  
+            -H "Content-Type: application/json"  
+            -d '{"username":"Larry", "password" : "HopefulPressure"}'
 
    Then, request headers and payload can reference these values as with {username} or {password}.
 
@@ -161,6 +161,10 @@ In addition to the data access APIs shown above, there are a few job control API
    to stop running the job.
 
 
+Jobs run "forever" unless they turn themselves off. It is possible for a
+job itself to invoke the action=stop url on the job server. In this case
+it would turn itself off.
+
 The "run status" of a job is known only to the loadgen server.  It is
 not stored in App Services, as this status depends on the loadgen server
 process continuing to operate. A "running" job implies a pending
@@ -168,7 +172,8 @@ setTimeout() call in the Nodejs process; when it fires, the loadgen
 server sends out the next round of requests.  When the loadgen server
 shuts down, any setTimeout() calls for "running" jobs then become
 irrelevant, and so all jobs that were previously running are now
-stopped.
+stopped. Hence the run state is ephemeral and known only to the instance
+of the job server.
 
 This implies that if multiple loadgen servers are running at the same
 time, they will have multiple independent views of the run status of any
