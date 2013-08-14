@@ -442,6 +442,8 @@ Bugs
 - In the loadgen server, the job store is hardcoded as an App Services org+app under my personal account. This should be specifyable in the UI.
 - The companion UI to manage job definitions is pretty limited and ugly.
 - When the token to contact App Services expires, the loadgen server stops work, unable to read jobs. Need to implement token refresh.
-- Currently the loadgen server does not allow outbound calls within a job to specify a variable X-Forwarded-For header.  There should be a way to allow a weighted-random selection of XFF.
-- it is not possible to change the logging verbosity in the loadgen server
-- loadgen jobs Does not handle XML requests or responses, or anything non-JSON. This is probably a low proprity. 
+- Currently the loadgen server allows outbound calls within a job to specify a variable X-Forwarded-For header.  The load distribution is always based on population distribution. This works, but  there should be a way to allow different distributions for XFF.
+- it is not possible to change the logging verbosity in the loadgen server. 
+- loadgen jobs do not handle xml requests or responses, or anything non-JSON. This is probably a low priority bug. 
+- embedding more than one template in a URL path, is not supported.
+- it is not supported to have a specific request target a domain name different than is specified in the job defn defaults
