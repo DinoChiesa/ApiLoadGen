@@ -3,14 +3,12 @@
 //
 // Job control server implemented using Express.  Migrated from restify.
 //
+//   POST /token  - to authenticate
+//   GET /users/:userid
 //   GET /jobs
-//   POST /jobs
-//   GET /jobs/{job-id}/includes
-//   GET /jobs/{job-id}/includes/{sequence-id}
-//   GET /jobs/{job-id}/includes/{sequence-id}/references
-//   POST /jobs/{job-id}?action=start
-//   POST /jobs/{job-id}?action=stop
-//   etc
+//   GET /jobs/:jobid
+//   POST /jobs/{job-id}?action={start|stop}
+//   ...and maybe a few other calls.
 //
 // You may have to do the following to run this code:
 //
@@ -22,14 +20,13 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-13 10:41:13>
+// last saved: <2013-August-13 20:24:40>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
 // All rights reserved.
 //
 // ------------------------------------------------------------------
-
 
 var assert = require('assert'),
     q = require ('q'),
@@ -54,7 +51,6 @@ var assert = require('assert'),
     reUuid = new RegExp(reUuidStr);
 
 function Log(id) { }
-
 
 Log.prototype.write = function(str) {
   var time = (new Date()).toString(), me = this;
@@ -391,6 +387,7 @@ function resolveNumeric(input) {
   return I;
 }
 
+
 function evalTemplate(ctx, code) {
   var src = '(function (', c = 0, f, values = [], result,
       extractContext = ctx.state.extracts;
@@ -422,9 +419,11 @@ function evalTemplate(ctx, code) {
 
 
 // expandEmbeddedTemplates: walks through an object, replacing each embedded
-// template as appropriate.
+// template as appropriate. This is used to expand a templated payload.
 function expandEmbeddedTemplates(ctx, obj) {
-  var re = new RegExp('(.*){(.+)}(.*)'), newObj = {}, match,
+  var re1 = new RegExp('(.*)(?!{{){([^{}]+)(?!}})}(.*)'),
+      re2 = new RegExp('(.*){{([^{}]+)}}(.*)'),
+      newObj = {}, match, newVal,
       type = Object.prototype.toString.call(obj), x, i;
   if (type === "[object Array]") {
     // iterate
@@ -439,14 +438,15 @@ function expandEmbeddedTemplates(ctx, obj) {
       if (obj.hasOwnProperty(prop)) {
         type = Object.prototype.toString.call(obj[prop]);
         if (type === "[object String]") {
-          match = re.exec(obj[prop]);
-          if (match) {
-            // expand template for this prop
-            newObj[prop] = match[1] + evalTemplate(ctx, match[2]) + match[3];
+          // replace all templates in the string
+          for (newVal = obj[prop], match = re1.exec(newVal); match; match = re1.exec(newVal)){
+            newVal = match[1] + evalTemplate(ctx, match[2]) + match[3];
           }
-          else {
-            newObj[prop] = obj[prop];
+          for (match = re2.exec(newVal); match; match = re2.exec(newVal)){
+            newVal = match[1] + '{' + match[2] + '}' + match[3];
           }
+
+          newObj[prop] = newVal;
         }
         else if (type === "[object Array]") {
           // iterate
@@ -469,6 +469,7 @@ function expandEmbeddedTemplates(ctx, obj) {
   }
   return newObj;
 }
+
 
 // ==================================================================
 
@@ -968,7 +969,6 @@ app.configure(function() {
 //
 // server.on('MethodNotAllowed', unknownMethodHandler);
 
-
 // server.post('/jobs'), function(req, res, next) {
 //   // TODO: implement creation of new jobs
 //   res.send(201, {
@@ -1015,49 +1015,6 @@ app.get('/users/:userid', function(req, res, next) {
   });
 });
 
-app.get('/jobs/:jobid', function(req, res, next) {
-  var jobid = req.params.jobid,
-      match = reUuid.exec(req.params.jobid);
-
-  if (match) {
-    log.write('get job, job id: ' + req.params.jobid);
-    q.resolve({jobid:req.params.jobid, modelConnection:{authz:req.headers.authorization}})
-      .then(retrieveOneJob)
-      .then(retrieveSequencesForJob)
-      .then(function(ctx) {
-        var job = ctx.model.jobs[0];
-        job.status = (activeJobs.hasOwnProperty(req.params.jobid)) ? "running" : "stopped";
-        res.json(job);
-        next();
-        return true;
-      })
-      .done();
-  }
-  else {
-    res.json(400, {status:"fail", message:'malformed uuid'});
-    //return next();
-    return;
-  }
-});
-
-app.get('/jobs', function(req, res, next) {
-  log.write('GET jobs');
-  //console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
-  q.resolve({modelConnection:{authz:req.headers.authorization}})
-    .then(retrieveAllJobs)
-    .then(retrieveSequencesForJob)
-    .then(function(ctx) {
-      ctx.model.jobs.forEach(function (element, index, array){
-        element.status = (activeJobs.hasOwnProperty(element.uuid)) ?
-          "running" : "stopped";
-      });
-      res.json(ctx.model.jobs);
-      //next();
-      return true;
-    })
-    .done();
-});
-
 app.post('/token', function(req, res, next) {
   var body = req.body;
   log.write('POST token');
@@ -1091,6 +1048,50 @@ app.post('/token', function(req, res, next) {
       res.send(obj.status, obj.body);
     });
   //next();
+});
+
+
+app.get('/jobs', function(req, res, next) {
+  log.write('GET jobs');
+  //console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
+  q.resolve({modelConnection:{authz:req.headers.authorization}})
+    .then(retrieveAllJobs)
+    .then(retrieveSequencesForJob)
+    .then(function(ctx) {
+      ctx.model.jobs.forEach(function (element, index, array){
+        element.status = (activeJobs.hasOwnProperty(element.uuid)) ?
+          "running" : "stopped";
+      });
+      res.json(ctx.model.jobs);
+      //next();
+      return true;
+    })
+    .done();
+});
+
+app.get('/jobs/:jobid', function(req, res, next) {
+  var jobid = req.params.jobid,
+      match = reUuid.exec(req.params.jobid);
+
+  if (match) {
+    log.write('get job, job id: ' + req.params.jobid);
+    q.resolve({jobid:req.params.jobid, modelConnection:{authz:req.headers.authorization}})
+      .then(retrieveOneJob)
+      .then(retrieveSequencesForJob)
+      .then(function(ctx) {
+        var job = ctx.model.jobs[0];
+        job.status = (activeJobs.hasOwnProperty(req.params.jobid)) ? "running" : "stopped";
+        res.json(job);
+        next();
+        return true;
+      })
+      .done();
+  }
+  else {
+    res.json(400, {status:"fail", message:'malformed uuid'});
+    //return next();
+    return;
+  }
 });
 
 

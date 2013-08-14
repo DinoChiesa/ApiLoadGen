@@ -299,7 +299,9 @@ The job definition should look something like this example:
 
 Most of these properties are self-explanatory. The geoDistribution
 property on the job specifies whether to simulate geo-distributed load
-as the job runs. Set this to zero if you do not want geo-distributed
+as the job runs, via the X-Forwarded-For header.  Set this property to
+zero in the job definition if you do not want geo-distributed load. If
+you omit the property, you get the default, which is geo distributed
 load.
 
 
@@ -330,11 +332,11 @@ For example, an extract like this:
 ...will extract the value AAABBBCCC and insert it into a context variable called
 login_token. This variable will then be available for use in the headers or
 payloads of subsequent requests in the sequence or the requests of subsequent
-sequences. 
+sequences, using templates.  Curly braces denote the values to inject. 
 
-To later insert the values of these context variables into the headers
-or payloads of subsequent outbound requests, specify the variable name
-in curly-braces, like this:
+For example, to later insert the values of these context variables into
+the headers or payloads of subsequent outbound requests, specify things
+like this:
 
       "headers" : {
         "authorization" : "Bearer {login_token}"
@@ -347,9 +349,28 @@ in curly-braces, like this:
         "otherStuff":"ABCDEF"
       }, 
 
+...or
 
-You should use single quotes within the extract functions if you need
-quotes. Or, escape the double quotes. 
+      "pathSuffix" : "/foo/bar/{href}",
+
+
+You can employ multiple curly-brace enclosed templates in each string,
+like this:
+
+      "pathSuffix" : "/foo/{key}/{href}"
+
+If you need a curly-brace enclosed thing in your string and don't want
+it to be expanded or interpreted at runtime, use double-curlies. This
+
+     "/foo/bar/{{baz}}"
+
+...resolves to 
+
+     /foo/bar/{baz}
+
+
+I recommend that you use single quotes within the extract functions.
+Or, escape the double quotes.
 
 
 If you want the request rate to vary over time, you need to specify a load profile in
@@ -445,5 +466,4 @@ Bugs
 - Currently the loadgen server allows outbound calls within a job to specify a variable X-Forwarded-For header.  The load distribution is always based on population distribution. This works, but  there should be a way to allow different distributions for XFF.
 - it is not possible to change the logging verbosity in the loadgen server. 
 - loadgen jobs do not handle xml requests or responses, or anything non-JSON. This is probably a low priority bug. 
-- embedding more than one template in a URL path, is not supported.
 - it is not supported to have a specific request target a domain name different than is specified in the job defn defaults
