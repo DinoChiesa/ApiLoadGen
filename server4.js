@@ -20,7 +20,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-14 07:01:40>
+// last saved: <2013-August-14 07:09:19>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -763,7 +763,7 @@ function runJob(context) {
 
   // generate a random IP address if necessary
   if (state.request === 0 && state.iteration === 0 && state.sequence === 0) {
-    if (!job.hasOwnProperty('geoDistribution') || job.geoDistribution == 0) {
+    if (!job.hasOwnProperty('geoDistribution') || job.geoDistribution == 1) {
       if (!citySelector) {
         p = p.then(retrieveCities);
       }
