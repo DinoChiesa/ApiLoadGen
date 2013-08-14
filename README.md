@@ -41,19 +41,19 @@ Interesting Files
   a simple REST server implemented in nodejs, with express.  For the http client function it uses slimNodeHttpClient. It relies on q for promises.  Accepts APIs on the jobs under management. 
 
 * `slimNodeHttpClient.js`  
-  a slim http client for node that implements q's promises. The base http client in node is heinous. This gets require'd by server4.js 
+  a slim http client for node that implements q's promises. The base http client in node is heinous. This gets require'd by server4.js . It is used for all outbound http communications including those to App Services. We could use the app services nodejs client library, but then there are other outbound requests that go to arbitrary http endpoints. This server uses a common http client library for the purpose. 
 
 * `weightedRandomSelector.js`  
-  a module that provides a weighted random selector. This allows the server to randomly select a city based on population, for each request. It would make more sense to select a city per job. Anyway, this is the beginning of specifying a contrived X-Forwarded-For header. 
+  a module that provides a weighted random selector. This allows the server to randomly select a city based on population, for each job. Then, using the geo-to-ip database, it selects an IP address to insert into the contrived X-Forwarded-For header. 
 
 * `etl1.js`  
   a simple command-line nodejs tool that loads the specified "model" file for a job into App Services. 
 
-* `FileReader.js`  
-  a line-by-line file reader for nodejs, used by parseCitiesPop.js
-
 * `parseCitiesPop.js`  
   a one-time use program to parse the txt file containing the list of US cities and population from wikipedia, and populate App Services with that data. 
+
+* `FileReader.js`  
+  a line-by-line file reader for nodejs, used by parseCitiesPop.js
 
 * `model.json` and `model2.json`  
   example model files for use with etl1.js
