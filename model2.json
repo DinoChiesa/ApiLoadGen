@@ -26,7 +26,7 @@
       "iterations" : 1,
       "requests" : [ {
         "name": "login",
-        "pathSuffix" : "/v1/ictrl/login",
+        "url" : "/v1/ictrl/login",
         "method" : "post",
         "headers" : {
           "content-type" : "application/json"
@@ -58,7 +58,7 @@
         {
           "name" : "retrieveUser",
           "description" : "query the user item",
-          "pathSuffix" : "{hrefs.user}",
+          "url" : "{hrefs.user}",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -68,7 +68,7 @@
         {
           "name" : "retrieveSite",
           "description" : "retrieve the site",
-          "pathSuffix" : "{hrefs.site}",
+          "url" : "{hrefs.site}",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -84,7 +84,7 @@
         {
           "name" : "queryAlarms",
           "description" : "query alarms",
-          "pathSuffix" : "{hrefs.site}/alarmSessions?maxResults=100",
+          "url" : "{hrefs.site}/alarmSessions?maxResults=100",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -94,7 +94,7 @@
         {
           "name" : "queryImages",
           "description" : "query camera images",
-          "pathSuffix" : "{hrefs.site}/cameraImagesAndVideos?start=0&maxResults=10",
+          "url" : "{hrefs.site}/cameraImagesAndVideos?start=0&maxResults=10",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -104,7 +104,7 @@
         {
           "name" : "querySecurityEvents",
           "description" : "query security events",
-          "pathSuffix" : "{hrefs.site}/securityEvents?maxResults=25",
+          "url" : "{hrefs.site}/securityEvents?maxResults=25",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -114,7 +114,7 @@
         {
           "name" : "querySiteUsers",
           "description" : "query site users",
-          "pathSuffix" : "{siteHrefs.users}",
+          "url" : "{siteHrefs.users}",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -124,7 +124,7 @@
         {
           "name" : "querySiteAddress",
           "description" : "query site address",
-          "pathSuffix" : "{siteHrefs.address}",
+          "url" : "{siteHrefs.address}",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -139,7 +139,7 @@
       "iterations" : 1,
       "requests" : [ {
         "name": "logout",
-        "pathSuffix" : "/v1/ictrl/logout",
+        "url" : "/v1/ictrl/logout",
         "method" : "post",
         "headers" : {
           "content-type" : "application/json",
