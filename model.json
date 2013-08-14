@@ -30,7 +30,7 @@
       "requests" : [ {
         "type" : "request",
         "name": "login",
-        "pathSuffix" : "/v1/todolist/token",
+        "url" : "/v1/todolist/token",
         "method" : "post",
         "headers" : {
           "content-type" : "application/json"
@@ -58,7 +58,7 @@
         {
           "type" : "request",
           "name" : "retrieveItems",
-          "pathSuffix" : "/v1/todolist/users/me/owns/items",
+          "url" : "/v1/todolist/users/me/owns/items",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -74,7 +74,7 @@
           "type" : "request",
           "name" : "retrieveRandomItem",
           "description" : "retrieve one item, at random",
-          "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
+          "url" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
           "method" : "get",
           "headers" : {
             "authorization" : "Bearer {oauth_bearer_token}"
@@ -85,7 +85,7 @@
           "type" : "request",
           "name" : "updateRandomItem",
           "description" : "update one randomly-selected item with a contrived complex value for a property",
-          "pathSuffix" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
+          "url" : "/v1/todolist/users/me/owns/items/{uuids[Math.floor(Math.random() * uuids.length)]}",
           "method" : "put",
           "delayBefore" : 30,
           "headers" : {
