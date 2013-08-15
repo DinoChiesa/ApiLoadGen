@@ -478,3 +478,7 @@ function JobEditorController ($scope, dialog, dialogModel, job) {
     dialog.close(modJob);
   };
 }
+
+function CollapseDemoController($scope) {
+  $scope.isCollapsed = true;
+}
