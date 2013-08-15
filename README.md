@@ -31,7 +31,7 @@ on an API.
 Status
 ----------------------
 
-This is currently a work in progress. It's getting there.
+This project is basically functional. We're improving it. 
 
 
 Interesting Files
@@ -227,6 +227,10 @@ The job definition should look something like this example:
         "host": "demo18-test.apigee.net",
         "headers" : {
           "Accept" : "application/json"
+        },
+        "initialContext" : {
+          "something" : "a-value-here",
+          "prop2" : "another-value"
         }
       },
 
@@ -302,7 +306,13 @@ The job definition should look something like this example:
     }
 
 
-Most of these properties are self-explanatory. Some comments on others. 
+Most of these properties are self-explanatory. Here are some comments on
+others.
+
+The initialContext property on the job provides an initial set of
+context data items. Thexe will be accessible via the templating
+facility.  This initialContext can be augmented or overridden with
+context provided in the body of the POST request to start the job.
 
 The geoDistribution property on the job specifies whether to simulate
 geo-distributed load as the job runs, via the X-Forwarded-For header.

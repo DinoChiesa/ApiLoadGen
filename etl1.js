@@ -9,7 +9,7 @@
 // job. This script is a supporting tool for the loadgen server.
 //
 // created: Thu Jul 18 15:54:12 2013
-// last saved: <2013-July-31 12:26:22>
+// last saved: <2013-August-15 15:49:31>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -21,8 +21,8 @@ var assert = require('assert'),
     restify = require('restify'),
     q = require ('q'),
     fs = require('fs'),
-    filename, model, 
-    theJob, promise, requests, s, 
+    filename, model,
+    theJob, promise, requests, s,
     urlPathPrefix = '/dino/loadgen1',
     i, j, L,
     client = restify.createJsonClient({
@@ -45,10 +45,10 @@ function logRequest(e, req, res, obj, payload) {
 
 function promisifyLoadProfile(profile) {
   return function(context) {
-    var deferredPromise = q.defer(), 
+    var deferredPromise = q.defer(),
         urlJobPath = urlPathPrefix + '/jobs/' + context.job.uuid;
     profile.name += '-' + (new Date()).valueOf();
-    client.post(urlJobPath + '/uses/loadprofiles', profile, 
+    client.post(urlJobPath + '/uses/loadprofiles', profile,
                 function (e, httpReq, httpResp, obj) {
                   logRequest(e, httpReq, httpResp, obj);
                   deferredPromise.resolve(context);
@@ -59,7 +59,7 @@ function promisifyLoadProfile(profile) {
 
 function promisifySequence(seq) {
   return function(context) {
-    var deferredPromise = q.defer(), 
+    var deferredPromise = q.defer(),
         urlJobPath = urlPathPrefix + '/jobs/' + context.job.uuid;
     seq.name += '-' + (new Date()).valueOf();
     client.post(urlJobPath + '/includes/sequences', seq,
@@ -74,7 +74,7 @@ function promisifySequence(seq) {
 
 function promisifyRequest(req) {
   return function(context) {
-    var deferredPromise = q.defer(), 
+    var deferredPromise = q.defer(),
         urlJobPath = urlPathPrefix + '/jobs/' + context.job.uuid;
         url = urlJobPath + '/includes/sequences/' + context.sequence.uuid + '/references/requests';
     req.name += '-' + (new Date()).valueOf();
@@ -105,11 +105,12 @@ console.log('=============================================\n1. read the file');
 model = JSON.parse(fs.readFileSync(filename, "utf8"));
 
 console.log('=============================================\n2. create a job');
-// the job entity consists of a subset of the job in the model.json file. 
+// the job entity consists of a subset of the job object in the model.json file.
 theJob = {
-  defaultProperties : model.defaultProperties, 
-  description : model.description, 
-  name : model.name
+  defaultProperties : model.defaultProperties,
+  description : model.description,
+  name : model.name,
+  initialContext : model.initialContext
 };
 
 promise = q.resolve({job: theJob})

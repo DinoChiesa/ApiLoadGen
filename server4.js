@@ -20,7 +20,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-14 07:09:19>
+// last saved: <2013-August-15 15:54:25>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -98,6 +98,16 @@ function copyHash(obj) {
     if (obj.hasOwnProperty(attr)) {copy[attr] = obj[attr];}
   }
   return copy;
+}
+
+function combineProps(obj1, obj2) {
+  var newObj = {}, prop;
+  if (obj1) {
+    for (prop in obj1) { newObj[prop] = obj1[prop]; }
+  }
+  if (obj2) {
+    for (prop in obj2) { newObj[prop] = obj2[prop]; }
+  }
 }
 
 
@@ -637,21 +647,30 @@ function retrieveCities(ctx) {
 
 
 function chooseRandomIpFromRecord(rec) {
-  if (rec) {
-    var ranges = rec.ranges,
-        numRanges = ranges.length,
-        selectedRange = ranges[Math.floor(Math.random() * numRanges)],
-        start = parseInt(selectedRange[0], 10),
-        end = parseInt(selectedRange[1], 10),
-        index = Math.floor(Math.random()*(start-end)),
-        selected = start + index,
-        w =  Math.floor(( selected / 16777216 ) % 256),
-        x =  Math.floor(( selected / 65536    ) % 256),
-        y =  Math.floor(( selected / 256      ) % 256),
-        z =  Math.floor(( selected            ) % 256);
+  var ranges, numRanges, selectedRange,
+      start, end, index,
+      selected, w, x, y, z, allGood;
+  if ( ! rec) { return null;}
+
+  // It's possible we'lll get bad data from the request, in which case
+  // rec.ranges may be invalid. Or, any of the other successive fields
+  // may be invalid. In that case, bail.
+  allGood = (ranges = rec.ranges) &&
+    (numRanges = ranges.length) &&
+    (selectedRange = ranges[Math.floor(Math.random() * numRanges)]) &&
+    (start = parseInt(selectedRange[0], 10)) &&
+    (end = parseInt(selectedRange[1], 10)) &&
+    (index = Math.floor(Math.random()*(start-end))) &&
+    (selected = start + index) &&
+    (w =  Math.floor(( selected / 16777216 ) % 256)) &&
+    (x =  Math.floor(( selected / 65536    ) % 256)) &&
+    (y =  Math.floor(( selected / 256      ) % 256)) &&
+    (z =  Math.floor(( selected            ) % 256));
+
+  if (allGood)
     return w + "." + x + "." + y + "." + z ;
-  }
-  else return null;
+
+  return null;
 }
 
 
@@ -1131,7 +1150,7 @@ app.post('/jobs/:jobid',
                         .then(retrieveSequencesForJob)
                         .then(function(ctx) {
                           log.write('setting initial context');
-                          ctx.initialExtractContext = req.body;
+                          ctx.initialExtractContext = combineProps(ctx.initialContext, req.body);
                           return ctx;
                         })
                         .then(initializeJobRunAndKickoff)
