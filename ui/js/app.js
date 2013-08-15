@@ -250,8 +250,22 @@ angular
                     .replace(/\s+/g, '-'));
         });
       }
-    }
+    };
   })
+
+// for popovers with a template
+  .directive( 'popoverTemplatePopup', function () {
+    return {
+      restrict: 'EA',
+      replace: true,
+      scope: { title: '@', content: '@', placement: '@', animation: '&', isOpen: '&', template: '@' },
+      templateUrl: 'template/popover/popover-template.html'
+    };
+  })
+
+  .directive( 'popoverTemplate', [ '$tooltip', function ( $tooltip ) {
+    return $tooltip( 'popoverTemplate', 'popover', 'click' );
+  }])
 
   .filter('dateFullFormatter', function() {
     // filter is a factory function
@@ -266,5 +280,19 @@ angular
       return simpleDateFormatter(theDate, 'Y M d');
     };
   });
+
+
+angular
+  .module("template/popover/popover-template.html", [])
+  .run(["$templateCache", function($templateCache) {
+    $templateCache.put("views/popover-template.html",
+                       "<div class=\"popover {{placement}}\"\n" +
+                       //                     "     style=\"width: 400px\"\n" +
+                       "     ng-class=\"{ in: isOpen(), fade: animation() }\">\n" +
+                       "  <div class=\"arrow\"></div>\n" +
+                       "  <div class=\"popover-inner\" tt-load-template-in-sibling=\"{{template}}\"></div>\n" +
+                       "</div>\n" +
+                       "");
+  }]);
 
 log.write('ng configured');

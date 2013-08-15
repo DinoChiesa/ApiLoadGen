@@ -481,4 +481,7 @@ function JobEditorController ($scope, dialog, dialogModel, job) {
 
 function CollapseDemoController($scope) {
   $scope.isCollapsed = true;
+  $scope.getButtonSymbol = function() {
+    return ($scope.isCollapsed) ? '<' : '>';
+  };
 }

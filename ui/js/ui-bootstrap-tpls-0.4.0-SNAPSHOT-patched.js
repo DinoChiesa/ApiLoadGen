@@ -1,3 +1,14 @@
+// dino - Thu, 15 Aug 2013  11:28
+// This is a pre-release snapshot of the 0.4.0 release.
+//
+// As far as I can tell, the diff to the released 0.4.0 is that this
+// snap lacks the timepicker widget, and pagination is done differently.
+//
+// This one is then patched to include:
+// - popover-template (popout with an arrow/caret) which is not in 0.4.0
+// - tooltip remove at 1667 (here) or 1865.
+//
+
 angular.module("ui.bootstrap", ["ui.bootstrap.tpls", "ui.bootstrap.transition","ui.bootstrap.collapse","ui.bootstrap.accordion","ui.bootstrap.alert","ui.bootstrap.buttons","ui.bootstrap.carousel","ui.bootstrap.datepicker","ui.bootstrap.dialog","ui.bootstrap.dropdownToggle","ui.bootstrap.modal","ui.bootstrap.pagination","ui.bootstrap.position","ui.bootstrap.tooltip","ui.bootstrap.popover","ui.bootstrap.progressbar","ui.bootstrap.rating","ui.bootstrap.tabs","ui.bootstrap.typeahead"]);
 angular.module("ui.bootstrap.tpls", ["template/accordion/accordion-group.html","template/accordion/accordion.html","template/alert/alert.html","template/carousel/carousel.html","template/carousel/slide.html","template/datepicker/datepicker.html","template/dialog/message.html","template/pagination/pagination.html","template/tooltip/tooltip-html-unsafe-popup.html","template/tooltip/tooltip-popup.html","template/popover/popover.html","template/popover/popover-template.html","template/progressbar/bar.html","template/progressbar/progress.html","template/rating/rating.html","template/tabs/tab.html","template/tabs/tabset.html","template/typeahead/typeahead.html"]);
 angular.module('ui.bootstrap.transition', [])
