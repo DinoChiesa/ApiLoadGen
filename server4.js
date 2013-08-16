@@ -20,7 +20,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-15 15:54:25>
+// last saved: <2013-August-16 10:10:34>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -92,13 +92,15 @@ function getType(obj) {
 
 
 function copyHash(obj) {
-  if (null === obj || "object" != typeof obj) {return obj;}
   var copy = {};
-  for (var attr in obj) {
-    if (obj.hasOwnProperty(attr)) {copy[attr] = obj[attr];}
+  if (null !== obj && typeof obj == "object") {
+    for (var attr in obj) {
+      if (obj.hasOwnProperty(attr)) {copy[attr] = obj[attr];}
+    }
   }
   return copy;
 }
+
 
 function combineProps(obj1, obj2) {
   var newObj = {}, prop;
@@ -108,6 +110,7 @@ function combineProps(obj1, obj2) {
   if (obj2) {
     for (prop in obj2) { newObj[prop] = obj2[prop]; }
   }
+  return newObj;
 }
 
 
@@ -510,10 +513,13 @@ function invokeOneRequest(context) {
 
   // 2. evaluate the url path if required.
   if (match) {
-    // The urlpath includes a replacement string.
-    // Must evaluate the replacement within the promise chain.
+    // The url includes at least one template.
+    // Must do replacements within the promise chain.
     p = p.then(function(ctx){
-      url = match[1] + evalTemplate(ctx, match[2]) + match[3];
+      // there may be multiple templates; must evaluate all of them
+      for (match = re.exec(url); match; match = re.exec(url)) {
+        url = match[1] + evalTemplate(ctx, match[2]) + match[3];
+      }
       return ctx;
     });
   }
@@ -1150,7 +1156,8 @@ app.post('/jobs/:jobid',
                         .then(retrieveSequencesForJob)
                         .then(function(ctx) {
                           log.write('setting initial context');
-                          ctx.initialExtractContext = combineProps(ctx.initialContext, req.body);
+                          ctx.initialExtractContext = combineProps(ctx.model.jobs[0].initialContext, req.body);
+                          log.write(JSON.stringify(ctx.initialExtractContext,null,2));
                           return ctx;
                         })
                         .then(initializeJobRunAndKickoff)
@@ -1161,7 +1168,7 @@ app.post('/jobs/:jobid',
                               });
                     }
                     else {
-                      log.write('cannot start; job is alreadyrunning');
+                      log.write('cannot start; job is already running');
                       res.json(400, {status:"fail",message:"that job is already running"});
                     }
                   }

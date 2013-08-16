@@ -227,11 +227,12 @@ The job definition should look something like this example:
         "host": "demo18-test.apigee.net",
         "headers" : {
           "Accept" : "application/json"
-        },
-        "initialContext" : {
-          "something" : "a-value-here",
-          "prop2" : "another-value"
         }
+      },
+
+      "initialContext" : {
+        "something" : "a-value-here",
+        "prop2" : "another-value"
       },
 
       "loadprofiles" : [{ 
@@ -310,9 +311,11 @@ Most of these properties are self-explanatory. Here are some comments on
 others.
 
 The initialContext property on the job provides an initial set of
-context data items. Thexe will be accessible via the templating
-facility.  This initialContext can be augmented or overridden with
-context provided in the body of the POST request to start the job.
+context data items. These will be accessible via the templating
+facility. This initialContext can be augmented or overridden with
+context provided in the body of the POST request to start the job. And
+the extracts done for requests in the job can modify or augment this
+context.
 
 The geoDistribution property on the job specifies whether to simulate
 geo-distributed load as the job runs, via the X-Forwarded-For header.
@@ -331,14 +334,15 @@ ignored for that request.
 Some additional details:
 -------------------------
 
-The extracts, payload, and delayBefore are all optional parts of a request. The
-payload makes sense only for a PUT or POST. It's always JSON.  The extracts is
-an array of objects, each of which contains a description, the name of a
-variable, and a function, specified in JavaScript. These functions accept two
-arguments, the body and the headers, and get evaluated after the response has
-been received for the request. The return value of the function gets stored in
-a context variable with the name specified in "valueRef".  The description for
-the extract is just for documentation purposes.
+The extracts, payload, and delayBefore are all optional parts of a
+request. The payload makes sense only for a PUT or POST. It's always JSON.
+The extracts is an array of objects, each of which contains a description,
+the name of a variable, and a function, specified in JavaScript. These
+functions accept two arguments, the body and the headers, and get evaluated
+after the response has been received for the request. The return value of
+the function gets stored in a context variable associated to the job with
+the name specified in "valueRef".  The description for the extract is just
+for documentation purposes.
 
 For example, an extract like this:
 
@@ -352,8 +356,11 @@ For example, an extract like this:
 
     { login: { token: "AAABBBCCC" } } 
 
-...will extract the value AAABBBCCC and insert it into a context variable called
-login_token. This variable will then be available for use in the headers or
+...will extract the value AAABBBCCC and insert it into a context variable
+called login_token. The context is attached to the job, and is then
+accessible to any subsequent request in the job.
+
+The contents of extracted values can be inserted into the headers, paths, or
 payloads of subsequent requests in the sequence or the requests of subsequent
 sequences, using templates.  Curly braces denote the values to inject. 
 
