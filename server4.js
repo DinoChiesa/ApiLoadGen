@@ -20,7 +20,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-August-16 10:10:34>
+// last saved: <2013-August-16 10:23:58>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -530,9 +530,13 @@ function invokeOneRequest(context) {
       var match, value;
       for (var hdr in req.headers) {
         if (req.headers.hasOwnProperty(hdr)) {
-          match = re.exec(req.headers[hdr]);
+          value = req.headers[hdr];
+          match = re.exec(value);
           if (match) {
-            value = match[1] + evalTemplate(ctx, match[2]) + match[3];
+            // replace all templates until done
+            for (; match; match = re.exec(value)) {
+              value = match[1] + evalTemplate(ctx, match[2]) + match[3];
+            }
           }
           else {
             value = req.headers[hdr];

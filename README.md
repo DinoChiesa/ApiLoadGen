@@ -389,8 +389,10 @@ like this:
 
       "url" : "/foo/{key}/{href}"
 
-If you need a curly-brace enclosed thing in your string and don't want
-it to be expanded or interpreted at runtime, use double-curlies. This
+This works in any string: in the url, in a header, or in an arbitrary
+payload property. If you need a curly-brace enclosed thing in your string
+and don't want it to be expanded or interpreted at runtime, use
+double-curlies. Therefore, this
 
      "/foo/bar/{{baz}}"
 
