@@ -7,31 +7,253 @@ Load Generator tool for APIs
 Overview
 ----------------------
 
-This is a toolset that
-manages "jobs" that generate requests for APIs. It was built by Apigee. 
+This is a tools that generates artificial load for APIs. 
+It was built by Apigee, to aid in testing and exercising API servers. 
 
-The objective is to be able to generate "synthetic" load - fake load -
-on an API, which allows testing, as well as source data that results in 
-interesting-looking data charts and tables in Apigee Analytics. 
+The objective is to be able to generate "synthetic" load on an API,
+which allows testing, as well as source data that results in
+interesting-looking data charts and tables in Apigee Analytics. Like
+jmeter, but oriented towards APIs and it runs as a Nodejs app.
 
-The "job definition" includes rules and parameters that specify which
-APIs to invoke, and how, and when, and how often, in what order, and
-with what parameters or payloads.
+You define the load you want - the API calls you want to make - via a
+"job definition", which includes rules and parameters that specify which
+APIs to invoke, with what verbs, and how, and when, and how often, in
+what order, and with what parameters or payloads. The Job definition is
+a json file.
 
-Specific ettings within a job definition include: the volume of requests
-for a given time of day; the set of requests that should be performed in
-a sequence, including any of the contents of an HTTP request; whether to
-vary the X-Forwarded-For header, authentication information, and other
-things.
+Specific information within a job definition include: 
+ - the rate of requests to make during each hour of the day; 
+ - the set of requests that should be performed in a sequence, including any of the contents of an HTTP request; 
+ - whether to vary the X-Forwarded-For header
+ - how to specify authentication information
+ - the number of iterations of a request
+ - and so on
 
-The progression of contrived requests constitutes the artificial "load"
-on an API.
-
+The loadgen server reads the job definition and invokes the APIs from
+the server.  This constitutes the artificial "load" on an API server.
 
 Status
 ----------------------
 
 This project is basically functional. We're improving it. 
+
+
+Quick Start
+----------------------
+
+To use loadgen server, there are three steps:
+
+ 1. Create the job definition. 
+
+ 2. Provide the job definition to the loadgen server
+
+ 3. Start the job.  
+
+
+After you perform steps 1 & 2 once, you never need to perform them
+again. Job definitions are stored persistently. 
+
+Defining a job consists of writing a JSON file.  Here's a very simple example. 
+
+    {
+      "name": "job1",
+      "description": "Login to the Sonoa service",
+      "defaultProperties": {
+        "scheme": "https",
+        "host": "api.sonoasystems.net",
+        "headers" : {
+          "Accept" : "application/json",
+          "content-type" : "application/json"
+        }
+      },
+
+      "initialContext" : {
+          {"username":"Chris", "password":"Haljous#"}
+      },
+
+      "sequences" : [{
+        "name" : "seqLogin",
+        "description" : "login",
+        "iterations" : 1,
+        "requests" : [ {
+          "name": "login",
+          "url" : "/v1/login",
+          "method" : "post",
+          "payload" : {
+            "username":"{username}",
+            "password":"{password}"
+          },
+          "extracts" : [ {
+            "description" : "extract the login token",
+            "fn" : "function(obj) {return obj.login.token;}",
+            "valueRef" : "oauth_bearer_token"
+          }]
+        }]
+      }]
+    }
+
+
+In English, what this says is: the job will hit the server at
+https://api.sonoasystems.net. It will send and receive
+application/json. There will be just one sequence of requests, and in
+that sequence just one request.  That request will POST to the url path
+/v1/login . It will provide as a payload, a json object containing a
+username and password. From the JSON response, the job will extract the
+login token.
+
+This job could be used to exercise the login function of an API, once
+per minute, all day long.
+
+The initialContext property on the job provides an initial set of
+context data items. These will be accessible via templates, that you can
+apply to headers or urls or payloads on requests. For example, a url specified this way: 
+
+   /v1/test/{href} 
+
+...will replace {href} with the href property present in the context. 
+
+At runtime, 'extracts' performed on responses can inject new or
+additional values to that context. These new values can subsequently be
+referenced in other templates.
+
+There are many other things you can do with jobs; more on that later. 
+
+Step 2 is loading the job definition into the loadgen server. 
+
+This is done today with the etl1.js nodejs utility. Run it from the
+console.  If you have an invalid json, the script will display an
+error. Fix your json and try again. If this succeeds it will display a
+job UUID. You need this. Keep it.
+
+
+Step 3 is to start the job. Do this by first, starting the loadgen
+server itself, then sending it a command to start your particular job.
+For example if the uuid of your job is d73f14f4-f3b2-11e2-b505-6124ac12ea5b ,
+then you could start the job this way: 
+
+    node server4.js
+
+    curl -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"  
+
+
+That's it. 
+
+The job runs "forever" until you stop the node server or until you send
+it the appropriate sotp command.
+
+    curl -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=stop"  
+
+
+
+A More Involved Example
+--------------------------------
+
+Consider this job definition:
+
+    {
+      "name": "job2",
+      "description": "Exercise APIs exposed by Sonoa",
+      "geoDistribution": 1,
+      "defaultProperties": {
+        "scheme": "https",
+        "host": "api.sonoasystems.net",
+        "headers" : {
+          "Accept" : "application/json"
+        }
+      },
+
+      "initialContext" : {
+        "something" : "a-value-here",
+        "prop2" : "another-value"
+      },
+
+      "loadprofiles" : [{ 
+        "name" : "loadprofile1", 
+        "perHourCounts" : [
+          44, 35, 40, 36, 27, 40, 40, 54, 
+          57, 62, 54, 61, 73, 70, 53, 50, 
+          47, 62, 74, 88, 83, 77, 70, 51
+        ] 
+      }], 
+
+      "sequences" : [
+        {
+          "description" : "login",
+          "name" : "seqLogin",
+          "iterations" : 1,
+          "requests" : [ {
+            "type" : "request",
+            "name": "login",
+            "url" : "/v1/ictrl/login",
+            "method" : "post",
+            "headers" : {
+              "content-type" : "application/json"
+            },
+            "payload" : {
+              "username":"test",
+              "password":"password"
+            }, 
+            "delayBefore" : 0,
+            "extracts" : [
+              {
+                "description" : "extract the login token",
+                "fn" : "function(obj) {return obj.login.token;}",
+                "valueRef" : "oauth_bearer_token"
+              }, 
+              {
+                "description" : "extract the user and site hrefs",
+                "fn" : "function(obj) {var re1=new Regexp('^/[^/]+/[^/]+(/.*)$'), m1,m2; m1=re1.exec(obj.login.user.href); m2=re1.exec(obj.login.site.href); return {user:m1[1],site:m2[1]};}",
+                "valueRef" : "hrefs"
+              }
+            ]
+          }]
+        },
+        {
+          "type" : "sequence",
+          "name" : "seqQuery1",
+          "description" : "query user item (self)",
+          "iterations" : "1",
+          "requests" : [ 
+            {
+              "name" : "retrieveUser",
+              "url" : "/v1/ictrl/{hrefs.user}",
+              "method" : "get",
+              "headers" : {
+                "authorization" : "Bearer {oauth_bearer_token}"
+              }, 
+              "delayBefore" : 10
+            },
+            {
+              "name" : "retrieveSite",
+              "description" : "retrieve the site",
+              "url" : "/v1/ictrl/{hrefs.site}",
+              "method" : "get",
+              "headers" : {
+                "authorization" : "Bearer {oauth_bearer_token}"
+              }, 
+              "delayBefore" : 10
+            }
+          ]
+        }
+      ]
+    }
+
+This one adds a 'load profile', which tells the loadgen server the
+number of jobs to run in any hour of the day.
+
+The geoDistribution property on the job specifies whether to simulate
+geo-distributed load as the job runs, via the X-Forwarded-For header.
+Set this property to zero in the job definition if you do not want
+geo-distributed load. If you omit the property, you get the default,
+which is geo distributed load.
+
+The url property in the request specifies a relative or absolute URL. If
+you specify a relative url, then the scheme and domain name from the
+"job defaults" will be prepended to the url before it is used.  If you
+specify a fully qualified url, then the "job defaults" values are
+ignored for that request.
+
+
 
 
 Interesting Files
@@ -216,118 +438,8 @@ As a future enhancement, I may modify the loadgen tool so that it also performs
 this work, and I may implement a suitable UI for that purpose. This is not yet
 implemented. For now use etl1.js. 
 
-The job definition should look something like this example: 
 
-    {
-      "name": "job2",
-      "description": "Exercise APIs exposed by Sonoa",
-      "geoDistribution": 1,
-      "defaultProperties": {
-        "scheme": "https",
-        "host": "demo18-test.apigee.net",
-        "headers" : {
-          "Accept" : "application/json"
-        }
-      },
-
-      "initialContext" : {
-        "something" : "a-value-here",
-        "prop2" : "another-value"
-      },
-
-      "loadprofiles" : [{ 
-        "name" : "loadprofile1", 
-        "perHourCounts" : [
-          44, 35, 40, 36, 27, 40, 40, 54, 
-          57, 62, 54, 61, 73, 70, 53, 50, 
-          47, 62, 74, 88, 83, 77, 70, 51
-        ] 
-      }], 
-
-      "sequences" : [
-        {
-          "description" : "login",
-          "name" : "seqLogin",
-          "iterations" : 1,
-          "requests" : [ {
-            "type" : "request",
-            "name": "login",
-            "url" : "/v1/ictrl/login",
-            "method" : "post",
-            "headers" : {
-              "content-type" : "application/json"
-            },
-            "payload" : {
-              "username":"test",
-              "password":"password"
-            }, 
-            "delayBefore" : 0,
-            "extracts" : [
-              {
-                "description" : "extract the login token",
-                "fn" : "function(obj) {return obj.login.token;}",
-                "valueRef" : "oauth_bearer_token"
-              }, 
-              {
-                "description" : "extract the user and site hrefs",
-                "fn" : "function(obj) {var re1=new Regexp('^/[^/]+/[^/]+(/.*)$'), m1,m2; m1=re1.exec(obj.login.user.href); m2=re1.exec(obj.login.site.href); return {user:m1[1],site:m2[1]};}",
-                "valueRef" : "hrefs"
-              }
-            ]
-          }]
-        },
-        {
-          "type" : "sequence",
-          "name" : "seqQuery1",
-          "description" : "query user item (self)",
-          "iterations" : "1",
-          "requests" : [ 
-            {
-              "name" : "retrieveUser",
-              "url" : "/v1/ictrl/{hrefs.user}",
-              "method" : "get",
-              "headers" : {
-                "authorization" : "Bearer {oauth_bearer_token}"
-              }, 
-              "delayBefore" : 10
-            },
-            {
-              "name" : "retrieveSite",
-              "description" : "retrieve the site",
-              "url" : "/v1/ictrl/{hrefs.site}",
-              "method" : "get",
-              "headers" : {
-                "authorization" : "Bearer {oauth_bearer_token}"
-              }, 
-              "delayBefore" : 10
-            }
-          ]
-        }
-      ]
-    }
-
-
-Most of these properties are self-explanatory. Here are some comments on
-others.
-
-The initialContext property on the job provides an initial set of
-context data items. These will be accessible via the templating
-facility. This initialContext can be augmented or overridden with
-context provided in the body of the POST request to start the job. And
-the extracts done for requests in the job can modify or augment this
-context.
-
-The geoDistribution property on the job specifies whether to simulate
-geo-distributed load as the job runs, via the X-Forwarded-For header.
-Set this property to zero in the job definition if you do not want
-geo-distributed load. If you omit the property, you get the default,
-which is geo distributed load.
-
-The url property in the request specifies a relative or absolute URL. If
-you specify a relative url, then the scheme and domain name from the
-"job defaults" will be prepended to the url before it is used.  If you
-specify a fully qualified url, then the "job defaults" values are
-ignored for that request.
+xxxxx
 
 
 
