@@ -1,26 +1,25 @@
-// server4.js
+// server5.js
 // ------------------------------------------------------------------
 //
-// Job control server implemented using Express.  Migrated from restify.
+// Job control server implemented using Express. App Services is the
+// backing store.
 //
 //   POST /token  - to authenticate
 //   GET /users/:userid
 //   GET /jobs
+//   POST /jobs - create a new job
 //   GET /jobs/:jobid
+//   DELETE /jobs/:jobid - delete a job
 //   POST /jobs/{job-id}?action={start|stop}
 //   ...and maybe a few other calls.
 //
-// You may have to do the following to run this code:
+// You have to install the pre-requisites in order to run this code:
 //
-//    npm install express sleep q assert http
-//
-// Additionally, the slimNodeHttpClient.js requires
-//
-//    npm install url util stream http https json-stringify-safe
+//    npm install
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-September-18 17:27:56>
+// last saved: <2013-September-24 21:17:02>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -46,10 +45,19 @@ var assert = require('assert'),
     minSleepTimeInMs = 18000,
     defaultRunsPerHour = 60,
     isUrl = new RegExp('^https?://[-a-z0-9\\.]+($|/)', 'i'),
-    modelSourceUrlPrefix = 'https://api.usergrid.com/dino/loadgen1',
+    ugBase = 'https://api.usergrid.com',
+    cityPopUrlPrefix = ugBase + '/dino/loadgen1',
     ipDatabase = 'https://api.usergrid.com/mukundha/testdata/cities',
+    tokenHash = [],
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
     reUuid = new RegExp(reUuidStr);
+
+if (typeof String.prototype.startsWith != 'function') {
+  String.prototype.startsWith = function (str){
+    return this.slice(0, str.length) == str;
+  };
+}
+
 
 function Log(id) { }
 
@@ -61,29 +69,80 @@ Log.prototype.write = function(str) {
 };
 
 
+function modelSourceUrlPrefix(obj) {
+  return ugBase + '/' + obj.org + '/' + obj.app;
+}
+
+function splitOrgappHeader(hdr) {
+  var m = hdr.split(':');
+  if ( ! m || m.length != 2) {
+    throw "invalid value";
+  }
+  return {org:m[0], app:m[1]};
+}
+
 function getModelOptions(param) {
-  var authz, options, hdrs = {
+  var authz, uri, token, orgapp, type, hdrs = {
     'Accept' : 'application/json',
     'user-agent' : 'SlimHttpClient/1.0'
   };
 
-  // This fn can be called with either an inbound request, or with a context.  The
-  // context contains a child 'modelConnection' while the inbound request contains a child
-  // called 'headers'.
+  // This fn can be called with either an inbound request, or with a
+  // context. The context contains a child 'modelConnection' while the
+  // inbound request contains a child called 'headers'.
+
+  // This fn assigns the headers and the uri for the outbound request.
+  // The URI will connext to app services, to a specific org and app.
+  // The org and app is retrieved directly from the context, or from an
+  // in-memory hash using the token as a key.
+
   if (param) {
     if (param.modelConnection) {
-      hdrs.authorization = param.modelConnection.authz;
+      authz = param.modelConnection.authz;
+      if (param.modelConnection.orgapp) {
+        orgapp = param.modelConnection.orgapp;
+      }
     }
     else if (param.headers) {
       authz = param.headers.authorization || param.headers.Authorization;
-      if (authz) {
-        hdrs.authorization = authz;
+    }
+
+    if (authz) { hdrs.authorization = authz; }
+    if (!orgapp) {
+      token = authz ? extractBearerToken(authz) : null;
+      orgapp = (token) ? tokenHash[token] : null;
+      if ( ! orgapp) {
+        if (param.headers && param.headers['x-appsvcs']) {
+          // This is a token we have not seen. Need to extract the set
+          // the urlpath, and then store the org/app if the token is
+          // valid.
+          orgapp = splitOrgappHeader(param.headers['x-appsvcs']);
+        }
       }
     }
+    else {
+      type = getType(orgapp);
+      if (type === "[object String]") {
+        orgapp = splitOrgappHeader(orgapp);
+      }
+    }
+    uri = (orgapp) ? modelSourceUrlPrefix(orgapp) : '';
   }
+
   return {
+    uri : uri,
     headers: hdrs
   };
+}
+
+
+
+
+function extractBearerToken(authzHdr) {
+  if ( !authzHdr || !authzHdr.startsWith('Bearer ')) {
+    return null;
+  }
+  return authzHdr.slice(7);
 }
 
 
@@ -101,7 +160,6 @@ function copyHash(obj) {
   }
   return copy;
 }
-
 
 function combineProps(obj1, obj2) {
   var newObj = {}, prop;
@@ -146,14 +204,14 @@ function retrieveAllJobs(ctx) {
       requestOpts = getModelOptions(ctx);
 
   log.write('retrieveAllJobs');
-  requestOpts.uri = modelSourceUrlPrefix + '/jobs';
+  requestOpts.uri += '/jobs';
   request.get(requestOpts, function(e, httpResp, body) {
     var obj;
     if (e) {
       deferredPromise.resolve({
         state: {job:0, stage:'retrieve', error:e},
         model: {jobs:{}},
-        modelConnection: {authz: ctx.modelConnection.authz}
+        modelConnection: copyHash(ctx.modelConnection)
       });
     }
     else {
@@ -168,7 +226,7 @@ function retrieveAllJobs(ctx) {
         deferredPromise.resolve({
           state: {job:0, stage:'retrieve'},
           model: {jobs: obj.entities},
-          modelConnection: {authz:ctx.modelConnection.authz}
+          modelConnection: copyHash(ctx.modelConnection)
         });
       }
       else {
@@ -176,7 +234,7 @@ function retrieveAllJobs(ctx) {
         deferredPromise.resolve({
           state: {job:0, stage:'nojob', jobid:ctx.jobid},
           model: {},
-          modelConnection: { authz: ctx.modelConnection.authz }
+          modelConnection: copyHash(ctx.modelConnection)
         });
       }
     }
@@ -190,7 +248,7 @@ function retrieveOneJob(ctx) {
       requestOpts = getModelOptions(ctx);
 
   log.write(ctx.jobid + ' retrieveOneJob');
-  requestOpts.uri = modelSourceUrlPrefix + '/jobs/' + ctx.jobid;
+  requestOpts.uri += '/jobs/' + ctx.jobid;
   request.get(requestOpts, function(e, httpResp, body) {
     var obj;
     if (e) {
@@ -198,7 +256,7 @@ function retrieveOneJob(ctx) {
       deferredPromise.resolve({
         state: {job:0, stage:'nojob', jobid:ctx.jobid, error:e},
         model: {},
-        modelConnection: { authz: ctx.modelConnection.authz }
+        modelConnection: copyHash(ctx.modelConnection)
       });
     }
     else {
@@ -213,7 +271,7 @@ function retrieveOneJob(ctx) {
         deferredPromise.resolve({
           state: {job:0, stage:'retrieve', jobid:ctx.jobid},
           model: {jobs: obj.entities},
-          modelConnection: { authz: ctx.modelConnection.authz }
+          modelConnection: copyHash(ctx.modelConnection)
         });
       }
       else {
@@ -221,7 +279,7 @@ function retrieveOneJob(ctx) {
         deferredPromise.resolve({
           state: {job:0, stage:'nojob', jobid:ctx.jobid},
           model: {},
-          modelConnection: { authz: ctx.modelConnection.authz }
+          modelConnection: copyHash(ctx.modelConnection)
         });
       }
     }
@@ -231,155 +289,90 @@ function retrieveOneJob(ctx) {
 }
 
 
-function retrieveRequestsForOneSequence(ctx) {
-  return (function (context) {
-    var deferred, s, url,
-        state = context.state,
-        model = context.model,
-        options = getModelOptions(context);
 
-    // validate
-    if (!model.jobs[state.job].sequences) {
-      state.job++;
-      log.write('??no sequences');
-      return q.resolve(context);
-    }
+function deleteOneJob(ctx) {
+  var deferredPromise = q.defer(),
+      requestOpts = getModelOptions(ctx);
 
-    // check for termination
-    if (state.currentSequence == model.jobs[state.job].sequences.length) {
-      state.job++;
-      return q.resolve(context);
-    }
-
-    deferred = q.defer();
-    s = model.jobs[state.job].sequences[state.currentSequence];
-    if (s && s.metadata && s.metadata.connections && s.metadata.connections.references) {
-      url = modelSourceUrlPrefix + s.metadata.connections.references;
-
-      log.write('retrieveRequestsForOneSequence');
-      options.uri = url;
-      request.get(options, function(e, httpResp, body) {
-        var obj;
-        try {
-          obj = JSON.parse(body);
-        }
-        catch (exc1) {
-          obj = null;
-        }
-        s.requests = (obj && obj.entities && obj.entities[0]) ? obj.entities : null;
-        state.currentSequence++;
-        deferred.resolve(context);
+  log.write(ctx.jobid + ' deleteOneJob');
+  requestOpts.uri += '/jobs/' + ctx.jobid;
+  request.del(requestOpts, function(e, httpResp, body) {
+    var obj;
+    if (e) {
+      console.log('error: ' + JSON.stringify(e, null, 2));
+      deferredPromise.resolve({
+        status: httpResp.statusCode,
+        state: "error",
+        message: JSON.stringify(e, null, 2)
       });
     }
     else {
-      s.requests = [];
-      state.currentSequence++;
-      deferred.resolve(context);
-    }
-
-    return deferred.promise
-      .then(retrieveRequestsForOneSequence);
-  }(ctx));
-}
-
-
-function retrieveLoadProfileForJob(ctx) {
-  return (function (context) {
-    var deferred,
-        options = getModelOptions(context),
-        model = context.model,
-        jobs = model.jobs,
-        job = jobs ? jobs[0] : null,
-        query = "select * where type = 'loadprofile'";
-
-    log.write('retrieveLoadProfileForJob');
-
-    if ( ! job || ! job.metadata || !job.metadata.connections || !job.metadata.connections.uses ) {
-      log.write('missing job data');
-      return q.resolve(context);
-    }
-
-    deferred = q.defer();
-    options.uri = modelSourceUrlPrefix +
-      job.metadata.connections.uses + '?ql=' + encodeURIComponent(query);
-
-    request.get(options, function(e, httpResp, body) {
-      var obj;
       try {
         obj = JSON.parse(body);
       }
       catch (exc1) {
         obj = null;
       }
+
       if (obj && obj.entities && obj.entities[0]) {
-        context.model.jobs[0].loadprofile = obj.entities[0].perHourCounts;
-      }
-      deferred.resolve(context);
-    });
-
-    return deferred.promise;
-
-  }(ctx));
-}
-
-
-
-function retrieveSequencesForJob(ctx) {
-  return (function (context) {
-    var deferred,
-        options = getModelOptions(context),
-        query = "select * where type = 'sequence'",
-        state = context.state,
-        model = context.model,
-        jobs = model.jobs,
-        j;
-
-    // check for termination
-    if ((typeof model.jobs == "undefined") || (state.job == model.jobs.length)) {
-      log.write("retrieveSequencesForJob: terminate");
-      return q.resolve(context);
-    }
-
-    deferred = q.defer();
-    log.write('retrieveSequencesForJob');
-    j = jobs[state.job];
-
-    // check validity
-    if ( ! (j && j.metadata && j.metadata.connections && j.metadata.connections.includes)) {
-      log.write("retrieveSequencesForJob: invalid job");
-      return q.resolve(context);
-    }
-
-    options.uri = modelSourceUrlPrefix +
-      j.metadata.connections.includes + '?ql=' + encodeURIComponent(query);
-
-    request.get(options, function(e, httpResp, body) {
-      var obj;
-      if (e) {
-        log.write('error: ' + JSON.stringify(e, null, 2));
-        j.sequences = [];
+        deferredPromise.resolve({
+          state: "ok",
+          entity: obj.entities[0],
+          status: 200
+        });
       }
       else {
-        try {
-          obj = JSON.parse(body);
-        }
-        catch (exc1) {
-          obj = null;
-        }
-        if (obj && obj.entities && obj.entities[0]) {
-          j.sequences = obj.entities;
-        }
+        console.log('non response? ' + JSON.stringify(body, null, 2));
+        deferredPromise.resolve({ state: "inconsistent", status:500 });
       }
-      context.state.currentSequence = 0;
-      deferred.resolve(context);
-    });
-
-    return deferred.promise
-      .then(retrieveRequestsForOneSequence) // increments state.job
-      .then(retrieveSequencesForJob);
-
-  }(ctx));
+    }
+  });
+  return deferredPromise.promise;
 }
+
+
+function updateOneJob(ctx) {
+  var deferredPromise = q.defer(),
+      requestOpts = getModelOptions(ctx);
+
+  log.write(ctx.jobid + ' updateOneJob');
+  requestOpts.uri += '/jobs/' + ctx.jobid;
+  requestOpts.json = ctx.body;
+
+  request.put(requestOpts, function(e, httpResp, body) {
+    var obj;
+    if (e) {
+      console.log('error: ' + JSON.stringify(e, null, 2));
+      deferredPromise.resolve({
+        status: httpResp.statusCode,
+        state: "error",
+        message: JSON.stringify(e, null, 2)
+      });
+    }
+    else {
+      try {
+        obj = JSON.parse(body);
+      }
+      catch (exc1) {
+        obj = null;
+      }
+
+      if (obj && obj.entities && obj.entities[0]) {
+        deferredPromise.resolve({
+          state: "ok",
+          entity: obj.entities[0],
+          status: 200
+        });
+      }
+      else {
+        console.log('non response? ' + JSON.stringify(body, null, 2));
+        deferredPromise.resolve({ state: "inconsistent", status:500 });
+      }
+    }
+  });
+  return deferredPromise.promise;
+}
+
 
 // ==================================================================
 
@@ -520,7 +513,7 @@ function invokeOneRequest(context) {
     });
   }
 
-  // 2. run any imports
+  // 2. run any imports.
   if (req.imports && req.imports.length>0) {
     p = p.then(function(ctx){
       var imp, i, L;
@@ -617,7 +610,7 @@ function invokeOneRequest(context) {
                   }
                   catch (exc1){
                     // possibly it was not valid json
-                   obj = null;
+                    obj = null;
                   }
                 }
                 else {
@@ -673,10 +666,10 @@ function invokeOneRequest(context) {
 }
 
 
-function retrieveCities(ctx) {
+function retrieveCityPops(ctx) {
   var deferredPromise = q.defer(),
       options = {
-        uri: modelSourceUrlPrefix + '/cities?limit=1000',
+        uri: cityPopUrlPrefix + '/cities?limit=1000',
         method: 'get',
         headers: {
           'Accept' : 'application/json',
@@ -684,12 +677,12 @@ function retrieveCities(ctx) {
         }
       };
 
-  log.write('retrieveCities');
+  log.write('retrieveCityPops');
 
   request(options, function(e, httpResp, body) {
     var a, type, cities;
     if (e) {
-      log.write('retrieveCities, error: ' + e);
+      log.write('retrieveCityPops, error: ' + e);
     }
     else {
       type = getType(body);
@@ -698,7 +691,7 @@ function retrieveCities(ctx) {
         return [ elt, Number(elt.pop2010) ];
       });
       citySelector = new WeightedRandomSelector(cities);
-      log.write('retrieveCities done');
+      log.write('retrieveCityPops done');
     }
     deferredPromise.resolve(ctx);
   });
@@ -773,6 +766,7 @@ function contriveIpAddress(context) {
 }
 
 
+
 function runJob(context) {
   var state = context.state,
       model = context.model,
@@ -780,7 +774,6 @@ function runJob(context) {
       p, sequence;
 
   // check for termination.
-
   if (pendingStop.hasOwnProperty(job.uuid)) {
     // terminate
     state.sequence = 0;
@@ -811,11 +804,12 @@ function runJob(context) {
   if (state.sequence === state.S) {
     // terminate
     state.sequence = 0;
-    return q.resolve(context).then(setWakeup, trackFailure);
+    return q(context).then(setWakeup, trackFailure);
   }
 
   // need to verify that all properties are valid.
   // Sometimes they are not due to intermittent data retrieval errors.
+  // in which case, just sleep and try again at next interval.
   if ( ! (job.sequences && job.sequences.length && (state.sequence < job.sequences.length) &&
           job.sequences[state.sequence].requests && job.sequences[state.sequence].requests.length)) {
             return q.resolve(context)
@@ -844,7 +838,7 @@ function runJob(context) {
   if (state.request === 0 && state.iteration === 0 && state.sequence === 0) {
     if (!job.hasOwnProperty('geoDistribution') || job.geoDistribution == 1) {
       if (!citySelector) {
-        p = p.then(retrieveCities);
+        p = p.then(retrieveCityPops);
       }
       p = p.then(contriveIpAddress);
     }
@@ -881,9 +875,9 @@ function initializeJobRunAndKickoff(context) {
   if (!context.model.jobs || !context.model.jobs.length) {error = '-no jobs-';}
   else if (!context.model.jobs[0]) {error = '-no job-';}
   else if (!context.model.jobs[0].sequences ||
-      !context.model.jobs[0].sequences.length) {error = '-no sequences-';}
+           !context.model.jobs[0].sequences.length) {error = '-no sequences-';}
   else if (!context.model.jobs[0].sequences[0].requests ||
-      !context.model.jobs[0].sequences[0].requests.length) {error = '-no requests-';}
+           !context.model.jobs[0].sequences[0].requests.length) {error = '-no requests-';}
 
   if (error) {
     log.write(error);
@@ -899,11 +893,11 @@ function initializeJobRunAndKickoff(context) {
     // should stop.
     if (context.state.error) {
       if (context.state.error.statusCode === 404) {
-        return q.resolve(context); // and stop
+        return q(context); // and stop
       }
-      return q.resolve(context).then(setWakeup);
+      return q(context).then(setWakeup);
     }
-    return q.resolve(context).then(setWakeup);
+    return q(context).then(setWakeup);
   }
 
   context.state = {
@@ -919,7 +913,7 @@ function initializeJobRunAndKickoff(context) {
     start : now
   };
 
-  return q.resolve(context).then(runJob);
+  return q(context).then(runJob);
 }
 
 
@@ -932,7 +926,6 @@ function setWakeup(context) {
       durationOfLastRun = now - context.state.start,
       runsPerHour, sleepTimeInMs;
 
-
   if (context.model.jobs && context.model.jobs[0]) {
     jobid = context.model.jobs[0].uuid;
     delete context.model.jobs[0].contrivedIp;
@@ -941,7 +934,7 @@ function setWakeup(context) {
     jobid = context.state.jobid;
   }
   else {
-    jobid = "xxx";
+    jobid = "nnn";
     log.write("context: " + JSON.stringify(context, null, 2));
   }
   log.write(jobid + ' setWakeup');
@@ -949,9 +942,9 @@ function setWakeup(context) {
   // compute and validate the sleep time
   if (currentHour < 0 || currentHour > 23) { currentHour = 0;}
   runsPerHour = (context.model.jobs &&
-                 context.model.jobs[0].loadprofile &&
-                 context.model.jobs[0].loadprofile[currentHour]) ?
-    context.model.jobs[0].loadprofile[currentHour] : defaultRunsPerHour;
+                 context.model.jobs[0].invocationsPerHour &&
+                 context.model.jobs[0].invocationsPerHour[currentHour]) ?
+    context.model.jobs[0].invocationsPerHour[currentHour] : defaultRunsPerHour;
 
   sleepTimeInMs =
     Math.floor(oneHourInMs / runsPerHour) - durationOfLastRun;
@@ -961,16 +954,13 @@ function setWakeup(context) {
   log.write(jobid + ' ' + runsPerHour + ' runs per hour');
   log.write(jobid + ' sleep ' + sleepTimeInMs + 'ms, wake at ' +  new Date(now.valueOf() + sleepTimeInMs).toString().substr(16, 8));
 
-
   activeJobs[jobid] =
     setTimeout(function () {
       var startMoment = new Date().valueOf();
       activeJobs[jobid] = 0; // mark this job as "running" (not waiting)
       log.write(jobid + ' awake');
-      q.resolve({jobid:jobid, modelConnection: context.modelConnection})
+      q({jobid:jobid, modelConnection: context.modelConnection})
         .then(retrieveOneJob)
-        .then(retrieveLoadProfileForJob)
-        .then(retrieveSequencesForJob)
         .then(function(ctx) {
           var jobs = (ctx && ctx.model && ctx.model.jobs) ? ctx.model.jobs : [];
           if ( ! jobs[0]) {
@@ -978,8 +968,10 @@ function setWakeup(context) {
           }
           log.write('setting initial extract context');
           // The context must renew for every run of the job. But
-          // there's a starting context, which may include passwords,
-          // that has to be included.
+          // there's an "startContext", which may include passwords,
+          // that has to be merged with the initialContext for the bootstrap.
+          log.write('startContext: ' + JSON.stringify(startContext,null,2));
+          ctx.startContext = copyHash(startContext);
           ctx.initialExtractContext = combineProps(ctx.model.jobs[0].initialContext,
                                                    startContext);
           ctx.state.start = startMoment;
@@ -1005,7 +997,8 @@ function myCorsHandler(req, res, next) {
     // log.write('     request-hdrs: ' + JSON.stringify(req.headers, null, 2));
     // var allowedHeaders = ['Accept', 'Authorization', 'Origin', 'Referer',
     //                       'User-Agent', 'X-Requested-With'];
-    var allowedHeaders = ['authorization','accept','origin','content-type','x-requested-with'];
+    var allowedHeaders = ['authorization','accept','origin','content-type','x-requested-with',
+                          'x-appsvcs'];
 
     res.header('Access-Control-Allow-Credentials', true);
     res.header('Access-Control-Allow-Headers', allowedHeaders.join(', '));
@@ -1061,21 +1054,62 @@ app.configure(function() {
 //
 // server.on('MethodNotAllowed', unknownMethodHandler);
 
-// server.post('/jobs'), function(req, res, next) {
-//   // TODO: implement creation of new jobs
-//   res.send(201, {
-//     collection: req.params[0],
-//     id: Math.random().toString(36).substr(3, 8)
-//   });
-//   return next();
-// });
-//
+
+app.post('/token', function(req, res, next) {
+  var body = req.body,
+      options = getModelOptions(req);
+  // could add a logout fn here. Would involve removing token from the tokenHash.
+  log.write('POST token');
+
+  if ( !options.uri) {
+    log.write('missing org or app');
+    res.setHeader('Content-Type', 'application/json');
+    res.send(400, JSON.stringify({error:"you must specify an X-Appsvcs header containing org:app"},null,2));
+    return;
+  }
+
+  q(body)
+    .then(function(bdy){
+      var deferredPromise = q.defer();
+      if ( ! bdy.grant_type) {bdy.grant_type = 'password';}
+      options.json = bdy;
+      options.method = 'post';
+      options.uri += '/token';
+      //log.write('requesting ' + JSON.stringify(requestOpts,null,2));
+      request(options, function(e, httpResp, body) {
+        var orgapp;
+        if (e) {
+          log.write('error?: ' + e);
+          log.write('error?: ' + JSON.stringify(e,null,2));
+          deferredPromise.resolve({status: 500,
+                                   body:JSON.stringify(e,null,2)});
+        }
+        else {
+          // store org+app for later use with this token
+          orgapp = splitOrgappHeader(req.headers['x-appsvcs']);
+          tokenHash[body.access_token] = {org:orgapp.org, app:orgapp.app, stamp:(new Date()).getTime(), payload:body};
+          deferredPromise.resolve({status: httpResp.statusCode, body:body});
+        }
+      });
+      return deferredPromise.promise;
+    })
+    .done(function(obj) {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(obj.status, obj.body);
+    });
+});
+
 
 app.get('/users/:userid', function(req, res, next) {
   var options = getModelOptions(req);
+  log.write('GET user');
   //console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
-  options.uri = modelSourceUrlPrefix + req.url;
-  log.write('outbound GET ' + options.uri);
+  if ( ! options.uri) {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(400, {error:'you must specify a valid, known token in the Authorization header'});
+      return;
+  }
+  options.uri += req.url; // pass-through
   request.get(options, function(e, httpResp, body) {
     var obj, responseBody;
     try {
@@ -1094,182 +1128,268 @@ app.get('/users/:userid', function(req, res, next) {
     // log.write('keys(httpResp): ' + msg);
     if (e || !obj || !obj.entities || !obj.entities[0] || !obj.entities[0].type || obj.entities[0].type !== 'user') {
       responseBody = {status:'error'};
-      if (obj['error_description']) {
-        responseBody.message = obj['error_description'];
+      if (obj.error_description) {
+        responseBody.message = obj.error_description;
       }
       res.send(httpResp.statusCode, responseBody);
     }
     else {
+      // if (isRefresh) {
+      //   tokenHash[extractBearerToken(req.headers['authorization'])] = {
+      //     org:h[0], app:h[1] stamp:(new Date()).getTime()
+      //   };
+      // }
       res.send(obj);
     }
-    //return next();
-    return;
   });
 });
 
-app.post('/token', function(req, res, next) {
-  var body = req.body;
-  log.write('POST token');
-  q.resolve(body)
-    .then(function(bdy){
-      var deferredPromise = q.defer(),
-          requestOpts = {
-            uri: modelSourceUrlPrefix + '/token',
-            method: 'post',
-            json: bdy,
-            headers: {
-              accept : 'application/json',
-              'user-agent' : 'SlimHttpClient/1.0'
-            }
-          };
-      //log.write('requesting ' + JSON.stringify(requestOpts,null,2));
-      request(requestOpts, function(e, httpResp, body) {
-        if (e) {
-          log.write('error?: ' + e);
-          log.write('error?: ' + JSON.stringify(e,null,2));
-          deferredPromise.resolve({status: 500,
-                                   body:JSON.stringify(e,null,2)});
-        }
-        else {
-          deferredPromise.resolve({status: httpResp.statusCode, body:body});
-        }
-      });
-      return deferredPromise.promise;
-    })
-    .done(function(obj) {
-      res.send(obj.status, obj.body);
-    });
-  //next();
-});
 
 
 app.get('/jobs', function(req, res, next) {
+  var options = getModelOptions(req);
   log.write('GET jobs');
-  //console.log('inbound request: ' + req.url + '\n' + dumpRequest(req));
-  q.resolve({modelConnection:{authz:req.headers.authorization}})
+  if ( ! options.uri) {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(400, {error: 'you must specify a valid, known token in the Authorization header'});
+    return;
+  }
+  console.log('options: ' + JSON.stringify(options,null,2));
+  q({modelConnection:{authz:req.headers.authorization, orgapp:req.headers['x-appsvcs']}})
     .then(retrieveAllJobs)
-    .then(retrieveSequencesForJob)
     .then(function(ctx) {
       ctx.model.jobs.forEach(function (element, index, array){
         element.status = (activeJobs.hasOwnProperty(element.uuid)) ?
           "running" : "stopped";
       });
       res.json(ctx.model.jobs);
-      //next();
       return true;
     })
     .done();
 });
 
-app.get('/jobs/:jobid', function(req, res, next) {
+
+app.del('/jobs/:jobid', function(req, res, next) {
   var jobid = req.params.jobid,
       match = reUuid.exec(req.params.jobid);
 
-  if (match) {
-    log.write('get job, job id: ' + req.params.jobid);
-    q.resolve({jobid:req.params.jobid, modelConnection:{authz:req.headers.authorization}})
+  if ( ! match) {
+    res.json(400, {status: 'fail', message:'malformed uuid'});
+    return;
+  }
+  log.write('delete job, job id: ' + req.params.jobid);
+  q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization, orgapp:req.headers['x-appsvcs']}})
+    .then(deleteOneJob)
+    .then(function(ctx) {
+      res.json(ctx.status, ctx);
+      return true;
+    })
+    .done();
+});
+
+
+
+app.post('/jobs', function(req, res, next) {
+  // as of Monday, 23 September 2013, 17:11, there are no known users of this endpoint.
+  // As a result this has not been tested.
+  var body = req.body;
+  log.write('POST jobs');
+  q.resolve(body)
+    .then(function(bdy){
+      var deferredPromise = q.defer(),
+          requestOpts = combineProps(getModelOptions(req), { method: 'post', json: bdy});
+      requestOpts.uri += '/jobs';
+      request(requestOpts, function(e, httpResp, body) {
+        var newJob;
+        if (e) {
+          log.write('error?: ' + JSON.stringify(e,null,2));
+          deferredPromise.resolve({status: httpResp.statusCode,
+                                   body:JSON.stringify(e,null,2)});
+        }
+        else {
+          newJob = body.entities[0];
+          log.write('New job created:' + JSON.stringify(newJob));
+          deferredPromise.resolve({status: httpResp.statusCode, body:newJob});
+        }
+      });
+      return deferredPromise.promise;
+    })
+    .then(function(ctx) {
+      res.json(ctx.status, ctx.body);
+      return true;
+    })
+    .done();
+});
+
+
+app.put('/jobs/:jobid', function(req, res, next) {
+  var body = req.body,
+      jobid = req.params.jobid,
+      match = reUuid.exec(req.params.jobid),
+      token = extractBearerToken(req.headers.authorization),
+      orgapp = (token) ? tokenHash[token] : null;
+
+  if ( ! token) {
+    log.write('missing token');
+    res.json(400, {status: 'fail', message:'you must pass a bearer token in the Authorization header'});
+  }
+  else if ( ! orgapp) {
+    log.write('invalid token');
+    res.json(400, {status: 'fail', message:'you must login before doing that'});
+  }
+  else if ( ! match) {
+    log.write('bad job id');
+    res.json(400, {status: 'fail', message:'malformed jobid'});
+  }
+  else {
+    log.write('PUT jobs');
+    q.resolve({jobid:jobid, modelConnection:{
+      authz:req.headers.authorization,
+      orgapp:req.headers['x-appsvcs'],
+      body:body}})
+      .then(updateOneJob)
+      .then(function(ctx) {
+        res.json(ctx.status, ctx);
+        //next();
+        return true;
+      })
+      .done();
+  }
+});
+
+
+app.get('/jobs/:jobid', function(req, res, next) {
+  var jobid = req.params.jobid,
+      match = reUuid.exec(req.params.jobid),
+      token = extractBearerToken(req.headers.authorization),
+      orgapp = (token) ? tokenHash[token] : null;
+
+  if ( ! token) {
+    log.write('missing token');
+    res.json(400, {status: 'fail', message:'you must pass a bearer token in the Authorization header'});
+  }
+  else if ( ! orgapp) {
+    log.write('invalid token');
+    res.json(400, {status: 'fail', message:'you must login before doing that'});
+  }
+  else if ( ! match) {
+    log.write('bad job id');
+    res.json(400, {status: 'fail', message:'malformed jobid'});
+  }
+  else {
+    log.write('GET job ' + req.params.jobid);
+    q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization, orgapp:req.headers['x-appsvcs']}})
       .then(retrieveOneJob)
       .then(retrieveSequencesForJob)
       .then(function(ctx) {
         var job = ctx.model.jobs[0];
         job.status = (activeJobs.hasOwnProperty(req.params.jobid)) ? "running" : "stopped";
         res.json(job);
-        next();
         return true;
       })
       .done();
   }
-  else {
-    res.json(400, {status:"fail", message:'malformed uuid'});
-    //return next();
-    return;
-  }
 });
+
 
 
 // start and stop jobs
 app.post('/jobs/:jobid',
-            function(req, res, next) {
-              var jobid = req.params.jobid,
-                  match = reUuid.exec(jobid),
-                  action = req.query.action,
-                  timeoutId;
-              log.write('POST jobs/' + jobid + ' action=' + action);
-              // console.log('params: ' + JSON.stringify(req.params, null, 2));
-              // console.log('body: ' + JSON.stringify(req.body, null, 2));
+         function(req, res, next) {
+           var jobid = req.params.jobid,
+               match = reUuid.exec(jobid),
+               action = req.query.action,
+               timeoutId,
+               token = extractBearerToken(req.headers.authorization),
+               orgapp = (token) ? tokenHash[token] : null;
+           log.write('POST jobs/' + jobid + ' action=' + action);
+           // console.log('params: ' + JSON.stringify(req.params, null, 2));
+           // console.log('body: ' + JSON.stringify(req.body, null, 2));
 
-              if (match) {
-                if (action == 'start') {
-                  try {
-                    if ( ! activeJobs.hasOwnProperty(jobid)) {
-                      q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization}})
-                        .then(retrieveOneJob)
-                        .then(function(ctx){
-                          // this response gets sent while the job is running
-                          if ( ! ctx.model.jobs) {
-                            res.json({"status":"fail","message":"no job"});
-                          }
-                          else {
-                            res.json({"status":"ok"});
-                          }
-                          return ctx;
-                        })
-                        .then(retrieveLoadProfileForJob)
-                        .then(retrieveSequencesForJob)
-                        .then(function(ctx) {
-                          log.write('setting initial context');
-                          ctx.startContext = copyHash(req.body);
-                          ctx.initialExtractContext = combineProps(ctx.model.jobs[0].initialContext, ctx.startContext);
-                          log.write(JSON.stringify(ctx.initialExtractContext,null,2));
-                          return ctx;
-                        })
-                        .then(initializeJobRunAndKickoff)
-                        .done(function(){},
-                              function(e){
-                                log.write('unhandled error: ' + e);
-                                log.write(e.stack);
-                              });
-                    }
-                    else {
-                      log.write('cannot start; job is already running');
-                      res.json(400, {status:"fail",message:"that job is already running"});
-                    }
-                  }
-                  catch (exc1) {
-                    log.write('Exception: ' + exc1);
-                  }
-                }
-                else if (action == 'stop') {
-                  if (activeJobs.hasOwnProperty(jobid)) {
-                    timeoutId = activeJobs[jobid];
-                    // Either the timeoutId is a real timeoutId or it is zero.
-                    // The latter indicates the job is "currently running".
-                    if (timeoutId) {
-                      clearTimeout(timeoutId);
-                      delete activeJobs[jobid];
-                    }
-                    else {
-                      // mark for pending stop. This is checked in runJob.
-                      pendingStop[jobid] = true;
-                    }
-                    log.write('stop job ' + jobid);
-                    res.json({status:"ok"});
-                  }
-                  else {
-                    log.write('cannot stop; job is not running');
-                    res.json(400, {status:"fail", message:"that job is not currently running"});
-                  }
-                }
-                else {
-                  log.write('invalid action');
-                  res.json(400, {status:"fail", message:'invalid action'});
-                }
-              }
-              else {
-                log.write('bad job id');
-                res.json(400, {status:"fail", message:'malformed jobid'});
-              }
-            });
+           if (!orgapp) {
+             orgapp = req.headers['x-appsvcs'];
+           }
+
+           if ( ! token) {
+             log.write('missing token');
+             res.json(400, {status: 'fail', message:'you must pass a bearer token in the Authorization header'});
+           }
+           else if ( ! orgapp) {
+             log.write('no orgapp');
+             res.json(400, {status: 'fail', message:'you must specify the org and app'});
+           }
+           else if ( ! match) {
+             log.write('bad job id');
+             res.json(400, {status: 'fail', message:'malformed jobid'});
+           }
+           else {
+             if (action == 'start') {
+               try {
+                 if ( ! activeJobs.hasOwnProperty(jobid)) {
+                   q.resolve({jobid:jobid, modelConnection:{authz:req.headers.authorization, orgapp:orgapp}})
+                     .then(retrieveOneJob)
+                     .then(function(ctx){
+                       // this response gets sent just before the job is started
+                       if ( ! ctx.model.jobs) {
+                         res.json({"status":"fail","message":"no job"});
+                       }
+                       else {
+                         res.json({"status":"ok"});
+                       }
+                       return ctx;
+                     })
+                     .then(function(ctx) {
+                       log.write('setting initial context');
+                       ctx.startContext = copyHash(req.body);
+                       ctx.initialExtractContext = combineProps(ctx.model.jobs[0].initialContext,
+                                                                ctx.startContext);
+                       log.write(JSON.stringify(ctx.initialExtractContext,null,2));
+                       return ctx;
+                     })
+                     .then(initializeJobRunAndKickoff)
+                     .done(function(){},
+                           function(e){
+                             log.write('unhandled error: ' + e);
+                             log.write(e.stack);
+                           });
+                 }
+                 else {
+                   log.write('cannot start; job is already running');
+                   res.json(400, {status: 'fail',message:"that job is already running"});
+                 }
+               }
+               catch (exc1) {
+                 log.write('Exception: ' + exc1);
+               }
+             }
+             else if (action == 'stop') {
+               if (activeJobs.hasOwnProperty(jobid)) {
+                 timeoutId = activeJobs[jobid];
+                 // Either the timeoutId is a real timeoutId or it is zero.
+                 // The latter indicates the job is "currently running".
+                 if (timeoutId) {
+                   clearTimeout(timeoutId);
+                   delete activeJobs[jobid];
+                 }
+                 else {
+                   // mark for pending stop. This is checked in runJob.
+                   pendingStop[jobid] = true;
+                 }
+                 log.write('stop job ' + jobid);
+                 res.json({status:"ok"});
+               }
+               else {
+                 log.write('cannot stop; job is not running');
+                 res.json(400, {status: 'fail', message:"that job is not currently running"});
+               }
+             }
+             else {
+               log.write('invalid action');
+               res.json(400, {status: 'fail', message:'invalid action'});
+             }
+           }
+         });
+
 
 // ------------------------------------------------------------------
 server = http.createServer(app);

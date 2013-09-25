@@ -3,13 +3,13 @@
 log.write('c4.js');
 
 var html5AppId = '3C4ECBD1-7CC2-4A1B-B90B-6B4AB000A459',
-    ugBaseUrl = 'https://api.usergrid.com/dino/loadgen1',
-    jobsUrl = ugBaseUrl + '/jobs',
+    //ugBaseUrl = 'https://api.usergrid.com/dino/loadgen1',
+    //jobsUrl = ugBaseUrl + '/jobs',
     loadgenUrl = 'http://lvh.me:8001';
-    //jobsUrl = loadgenUrl + '/jobs';
+    jobsUrl = loadgenUrl + '/jobs';
 
 
-log.write('ugBaseUrl: ' + ugBaseUrl);
+log.write('loadgenUrl: ' + loadgenUrl);
 
 function Job(name, desc, defaultProps) {
   return {
@@ -21,8 +21,9 @@ function Job(name, desc, defaultProps) {
 }
 
 function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile */ ) {
-  var dialogModel = {}, token, reUrl = new RegExp('https?://[^/]+(/.*)$'),
-      httpConfig, initialContext = {};
+  var dialogModel = {}, reUrl = new RegExp('https?://[^/]+(/.*)$'),
+      httpConfig, initialContext = {},
+      token, org, app;
 
   $scope.sortKey = 'created';
   $scope.sortReverse = false;
@@ -60,11 +61,26 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
 
   log.write('MainController');
   // check for existing, working token
+  org = window.localStorage.getItem(html5AppId + '.org');
+  app = window.localStorage.getItem(html5AppId + '.app');
   token = window.localStorage.getItem(html5AppId + '.bearerToken');
-  if (token) {
+  if ( ! token) {
+    log.write('C4 no cached OAuth token.');
+    $scope.securityContext.checked = true;
+  }
+  else if ( ! org || !app ) {
+    log.write('C4 no cached org and app.');
+    $scope.securityContext.checked = true;
+  }
+  else {
     // verify that the token is valid, not expired
-    log.write('C4 checking OAuth token: ' + token);
-    httpConfig = { headers:{ 'Authorization': 'Bearer ' + token, 'Accept': 'application/json'} };
+    log.write('C4 org(' + org + ') app(' + app + ') token(' + token + ')');
+    // Since the loadgen server is a pass-through, we need to tell
+    // it which org/app the token applies to.
+    httpConfig = { headers:{ 'Authorization': 'Bearer ' + token,
+                             'Accept': 'application/json',
+                             'X-AppSvcs': org + ':' + app
+                           } };
     $http.get(loadgenUrl + '/users/me', httpConfig)
       .success(function ( response ) {
         // success implies the token is valid
@@ -72,19 +88,18 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
         log.write('OAuth token: ' + $scope.securityContext.access_token);
         log.write('user uuid: ' + $scope.securityContext.user.uuid);
         $http.defaults.headers.common.Authorization = 'Bearer ' + $scope.securityContext.access_token;
+        $http.defaults.headers.common['x-appsvcs'] = org + ':' + app;
         initialRetrieve();
       })
-      .error(function(data, status, headers, config) {
+      .error(function(responseBody, code, headers, config) {
         // in case of error, the token is probably stale.
         log.write('OAuth token validation failed');
-        log.write('data: ' + JSON.stringify(data, null, 2));
+        log.write('data: ' + JSON.stringify(responseBody, null, 2));
+        log.write('status: ' + JSON.stringify(code, null, 2));
+        log.write('headers: ' + JSON.stringify(headers, null, 2));
         window.localStorage.removeItem(html5AppId + '.bearerToken');
         $scope.securityContext.checked = true;
       });
-  }
-  else {
-    log.write('C4 no cached OAuth token.');
-    $scope.securityContext.checked = true;
   }
 
   $scope.openRegisterDialog = function() {
@@ -101,6 +116,8 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
 
   $scope.openLoginDialog = function(keepErrorMsg) {
     if ( ! keepErrorMsg && dialogModel.errorMessage) { delete dialogModel.errorMessage; }
+    dialogModel.org = org;
+    dialogModel.app = app;
     $scope.loginRegisterDialogOpts.resolve.title = function() { return 'Login'; };
     $scope.loginRegisterDialogOpts.resolve.wantIdentity = function() { return false; };
     var d = $dialog.dialog($scope.loginRegisterDialogOpts);
@@ -147,7 +164,8 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
 
   $scope.stopJob = function (job, $event) {
     //   POST /jobs/{job-id}?action=stop
-    $http.post(loadgenUrl + '/jobs/' + job.uuid + '?action=stop')
+    var url = loadgenUrl + '/jobs/' + job.uuid + '?action=stop';
+    $http.post(url)
       .success(function(data) {
         log.write('stop: ' + JSON.stringify(data));
         job.status = 'stopped';
@@ -172,6 +190,8 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
     $scope.jobRecords = [];
     $scope.securityContext = { checked : true }; // checked and not authenticated
   };
+
+
 
   // see http://docs.angularjs.org/api/ng.$http
   // after login:
@@ -201,7 +221,8 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
 
     // subsequently, use this in http requests:
     // Authorization: Bearer {access_token}
-    var loginPayload = { 'grant_type': 'password', username: creds.username, password: creds.password },
+    var loginPayload = { 'grant_type': 'password', username: creds.username, password: creds.password,
+                       org:creds.org, app:creds.app},
         loginHttpConfig = { headers:{ 'Content-Type': 'application/json', 'Accept': 'application/json'} };
 
     // TODO: proxy the app services login from the loadgen server
@@ -214,9 +235,13 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
         $scope.securityContext.checked = true;
         log.write('OAuth token: ' + token);
         window.localStorage.setItem(html5AppId + '.bearerToken', token);
+        window.localStorage.setItem(html5AppId + '.org', creds.org);
+        window.localStorage.setItem(html5AppId + '.app', creds.app);
         $http.defaults.headers.common.Authorization = 'Bearer ' + token;
         // necessary?
         httpConfig = { headers:{ 'Authorization': 'Bearer ' + token, 'Accept': 'application/json'} };
+        org = creds.org;
+        app = creds.app;
         if (dialogModel.errorMessage) { delete dialogModel.errorMessage; }
         creds.password = null;
         success();
@@ -228,10 +253,13 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
         }
         $scope.securityContext.checked = true;
         dialogModel.username = creds.username;
+        dialogModel.org = creds.org;
+        dialogModel.app = creds.app;
         // retry the login
         $scope.openLoginDialog(true);
       });
   }
+
 
   function register(creds) {
     // curl -X POST -i -H "Content-Type: application/json"
@@ -258,7 +286,7 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
     var registerPayload = { username: creds.username, password: creds.password, email: creds.email, name: creds.name },
         localHttpConfig = { headers:{ 'Content-Type': 'application/json', 'Accept': 'application/json'} };
 
-    $http.post(ugBaseUrl + '/users', registerPayload, localHttpConfig)
+    $http.post(loadgenUrl + '/users', registerPayload, localHttpConfig)
       .success(function (response) {
         var user = response.entities[0];
         if (user && user.activated) {
@@ -325,27 +353,28 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
   }
 
   function initialRetrieve() {
-    //log.write('get items from UG ' + shortUrl(jobsUrl))
-    log.write('get items from Loadgen... ' + loadgenUrl + '/jobs' + '?limit=100');
+    var url = loadgenUrl + '/jobs' + '?limit=100';
+    log.write('get items from Loadgen... ' + url);
 
     //httpConfig = { headers:{ 'Authorization': 'Bearer ' + token, 'Accept': 'application/json'} };
 
-    $http.get(loadgenUrl + '/jobs' + '?limit=100')
+    $http.get(url)
       .success(function(data, statusCode, hdrsGetterFn, more){
         log.write('got ' + data.length + ' jobs');
         $scope.jobRecords = data;
       })
       .error(function(response, code /*, headers, config */) {
-        log.write('failed to get items from UG: ' + response + ' ' + code);
+        log.write('failed to get items from UG: ' + JSON.stringify(response,null,2) + ' ' + code);
       });
   }
 
+
   $scope.addJob = function () {
+    // AFAIK, nobody calls this. There is no UI for this.
     var job = new Job($scope.newJobName, $scope.newJobDescrip, {});
     log.write('New job: ' + $scope.newJobName);
-    $http.post(jobsUrl, rec)
-      .success(function(data){
-        var newJob = data.entities[0];
+    $http.post(jobsUrl, job)
+      .success(function(newJob){
         log.write('New job created:' + JSON.stringify(newJob));
         $scope.jobRecords.push( newJob );
         rec.uuid = newJob.uuid;
@@ -355,7 +384,6 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
       .error(function(data, status, headers, config) {
         log.write('creation failed...' + JSON.stringify(data));
       });
-
     $scope.newJobName = '';
   };
 
@@ -442,6 +470,7 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
     return $scope.jobRecords.length;
   };
 }
+
 
 function LoginRegisterDialogController ($scope, dialog, dialogModel, title, wantIdentity) {
   $scope.dialogModel = dialogModel;

@@ -1,0 +1,14 @@
+{
+  "name": "dino-apiloadgen",
+  "version": "0.1.5",
+  "dependencies": {
+    "express": "3.4.x",
+    "sleep" : "1.1.1",
+    "q" : "0.9.7",
+    "assert": "0.4.9",
+    "url" : "0.7.9",
+    "util" : "0.4.9",
+    "stream" : "0.0.1",
+    "json-stringify-safe": "5.0.0"
+  }
+}

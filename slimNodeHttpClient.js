@@ -13,7 +13,7 @@
 //     npm install url util stream http https json-stringify-safe
 //
 // created: Fri Aug  2 21:21:03 2013
-// last saved: <2013-August-13 21:29:58>
+// last saved: <2013-September-23 18:11:39>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -106,7 +106,7 @@ HttpClientRequest.prototype.init = function (options) {
 
   self._redirectsFollowed = self._redirectsFollowed || 0;
   self.maxRedirects = (self.maxRedirects !== undefined) ? self.maxRedirects : 10;
-  self.followRedirect = (self.followRedirect !== undefined) ? self.followRedirect : true;
+  self.followRedirect = (self.followRedirect !== undefined) ? self.followRedirect : false;
   self.followAllRedirects = (self.followAllRedirects !== undefined) ? self.followAllRedirects : false;
   if (self.followRedirect || self.followAllRedirects) {
     self.redirects = self.redirects || [];
@@ -718,6 +718,16 @@ request.get = request;
 request.post = function (uri, options, callback) {
   var params = initParams(uri, options, callback);
   params.options.method = 'POST';
+  return request(params.uri || null, params.options, params.callback);
+};
+request.put = function (uri, options, callback) {
+  var params = initParams(uri, options, callback);
+  params.options.method = 'PUT';
+  return request(params.uri || null, params.options, params.callback);
+};
+request.del = function (uri, options, callback) {
+  var params = initParams(uri, options, callback);
+  params.options.method = 'DELETE';
   return request(params.uri || null, params.options, params.callback);
 };
 

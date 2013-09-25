@@ -7,30 +7,23 @@ Load Generator tool for APIs
 Overview
 ----------------------
 
-This is a tools that generates artificial load for APIs. 
-It was built by Apigee, to aid in testing and exercising API servers. 
+This is a tool that generates artificial load for APIs. It was built by
+Apigee, to aid in testing and exercising API proxies and servers.
 
 The objective is to be able to generate "synthetic" load on an API,
-which allows testing, as well as source data that results in
-interesting-looking data charts and tables in Apigee Analytics. Like
-jmeter, but oriented towards APIs and it runs as a Nodejs app.
+for testing purposes. This load also causes the Apigee Gateway to generate
+analytics records, which results in interesting-looking data charts and
+tables in the Apigee Analytics UI. The tool is like jmeter, but oriented
+towards APIs and it runs as a Nodejs app.
 
 You define the load you want - the API calls you want to make - via a
-"job definition", which includes rules and parameters that specify which
-APIs to invoke, with what verbs, and how, and when, and how often, in
-what order, and with what parameters or payloads. The Job definition is
-a json file.
-
-Specific information within a job definition include: 
- - the rate of requests to make during each hour of the day; 
- - the set of requests that should be performed in a sequence, including any of the contents of an HTTP request; 
- - whether to vary the X-Forwarded-For header
- - how to specify authentication information
- - the number of iterations of a request
- - and so on
+"job definition". The definition includes which hosts and urlpaths to
+invoke, with what headers and verbs and payloads, and when, and how
+often, in what order, and so on. The Job definition is serialized as a
+json file.
 
 The loadgen server reads the job definition and invokes the APIs from
-the server.  This constitutes the artificial "load" on an API server.
+the server. This constitutes the artificial "load" on an API server.
 
 Status
 ----------------------
@@ -72,55 +65,55 @@ Defining a job consists of writing a JSON file.  Here's a very simple example.
       },
 
       "sequences" : [{
-        "name" : "seqLogin",
         "description" : "login",
         "iterations" : 1,
         "requests" : [ {
-          "name": "login",
           "url" : "/v1/login",
           "method" : "post",
           "payload" : {
             "username":"{username}",
             "password":"{password}"
-          },
-          "extracts" : [ {
-            "description" : "extract the login token",
-            "fn" : "function(obj) {return obj.login.token;}",
-            "valueRef" : "oauth_bearer_token"
           }]
         }]
       }]
     }
 
 
-In English, what this says is: the job will hit the server at
+In English, what this says is: the job will invoke urls on the server at
 https://api.sonoasystems.net. It will send and receive
 application/json. There will be just one sequence of requests, and in
 that sequence just one request.  That request will POST to the url path
 /v1/login . It will provide as a payload, a json object containing a
-username and password. From the JSON response, the job will extract the
-login token.
+username and password. 
 
-This job could be used to exercise the login function of an API, once
-per minute, all day long.
+Running this job would exercise the login function of a fictitious
+sonoasystems API, once per minute, all day long.
 
-The initialContext property on the job provides an initial set of
+The initialContext property on the job provides the initial set of
 context data items. These will be accessible via templates, that you can
-apply to headers or urls or payloads on requests. For example, a url specified this way: 
+apply to headers or urls or payloads on requests. In this example, the
+data items in the payload get values from the context.  You could also
+specify a url this way:
 
    /v1/test/{href} 
 
-...will replace {href} with the href property present in the context. 
+This will replace {href} with the value of the href property in the context. 
 
-At runtime, 'extracts' performed on responses can inject new or
-additional values to that context. These new values can subsequently be
-referenced in other templates.
+The url property in the request specifies a relative or absolute URL. If
+you specify a relative url which begins with a slash, then the scheme
+and domain name from the "job defaults" will be prepended to the url
+before it is used.  If you specify a fully qualified url, which begins
+with a scheme (http or https), then the "job defaults" values are ignored
+for that request.
 
-There are many other things you can do with jobs; more on that later. 
+There are a few other things you can do with jobs; more on that later. 
+
+
+OK that was step 1: defining the job. 
 
 Step 2 is loading the job definition into the loadgen server. 
 
-This is done today with the etl1.js nodejs utility. Run it from the
+This is done today with the etl5.js nodejs utility. Run it from the
 console.  If you have an invalid json, the script will display an
 error. Fix your json and try again. If this succeeds it will display a
 job UUID. You need this. Keep it.
@@ -128,24 +121,64 @@ job UUID. You need this. Keep it.
 
 Step 3 is to start the job. Do this by first, starting the loadgen
 server itself, then sending it a command to start your particular job.
+You do need an access token before doing that.  Here are the steps:
+
+3a. Start the server:
+
+    node server5.js
+
+3b. Authenticate to get a token: 
+
+    curl -i -X POST -H "content-type: application/json" 
+            -H "X-Appsvcs: dino:loadgen2" 
+          http://localhost:8001/token 
+          -d '{"username" : "Operator2", "password" : "shhhhhhh!!!" }' 
+
+All that should be on one line.  The X-Appsvcs header specifies the org
+and app of Apigee App Services where the jobs are stored for this
+session. The username and password must be creds that are valid on that
+org+app. The loadgen server uses these creds to login to app services
+and retrieve jobs on your behalf.
+
+In response to that request, you will get a payload with an access
+token. Like this:
+
+    {
+      "access_token": "YWMtXXdgriWZEeOp0afTzC4WrwAAAUF3YmCFy2cXSTpZQ68WSpM7vkwFRmtjJsE",
+      "expires_in": 604800,
+      ...
+    }
+
+3c. Use that access token as a bearer token in all subsequent requests.
+
 For example if the uuid of your job is d73f14f4-f3b2-11e2-b505-6124ac12ea5b ,
 then you could start the job this way: 
 
-    node server4.js
+    curl -X POST -H "Authorization: Bearer $token" 
+           "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"  
 
-    curl -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"  
+...where $token is replaced with the token you received in response to
+the prior command. And that's it. The job will begin to run. If you want
+to pass an initial context that the job can use, pass it as the payload,
+like this:
+
+    curl -X POST -H "Authorization: Bearer $token" -H "content-type: application/json"
+           "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"  
+          -d '{ "username": "Himself" , "password" : "NeverToBeRevealed" }'
+
+This initial context will add to any initial context specified in the
+job itself. Any property names common in both places will get
+overwritten by the props passed in the start command.
+
+3d. The loadgen server then runs this job "forever" until you stop the node
+server or until you send it the appropriate "stop job" command.
+
+    curl -X POST  -H "Authorization: Bearer $token" 
+           "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=stop"  
 
 
-That's it. 
 
-The job runs "forever" until you stop the node server or until you send
-it the appropriate sotp command.
-
-    curl -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=stop"  
-
-
-
-A More Involved Example
+An Example with Extracts
 --------------------------------
 
 Consider this job definition:
@@ -167,23 +200,17 @@ Consider this job definition:
         "prop2" : "another-value"
       },
 
-      "loadprofiles" : [{ 
-        "name" : "loadprofile1", 
-        "perHourCounts" : [
-          44, 35, 40, 36, 27, 40, 40, 54, 
-          57, 62, 54, 61, 73, 70, 53, 50, 
+      "invocationsPerHour" : [
+          44, 35, 40, 36, 27, 40, 40, 54,
+          57, 62, 54, 61, 73, 70, 53, 50,
           47, 62, 74, 88, 83, 77, 70, 51
-        ] 
-      }], 
+      ],
 
       "sequences" : [
         {
           "description" : "login",
-          "name" : "seqLogin",
           "iterations" : 1,
           "requests" : [ {
-            "type" : "request",
-            "name": "login",
             "url" : "/v1/ictrl/login",
             "method" : "post",
             "headers" : {
@@ -209,13 +236,10 @@ Consider this job definition:
           }]
         },
         {
-          "type" : "sequence",
-          "name" : "seqQuery1",
           "description" : "query user item (self)",
-          "iterations" : "1",
+          "iterations" : "Math.floor(Math.random() * 5) + 4",
           "requests" : [ 
             {
-              "name" : "retrieveUser",
               "url" : "/v1/ictrl/{hrefs.user}",
               "method" : "get",
               "headers" : {
@@ -224,7 +248,6 @@ Consider this job definition:
               "delayBefore" : 10
             },
             {
-              "name" : "retrieveSite",
               "description" : "retrieve the site",
               "url" : "/v1/ictrl/{hrefs.site}",
               "method" : "get",
@@ -238,29 +261,112 @@ Consider this job definition:
       ]
     }
 
-This one adds a 'load profile', which tells the loadgen server the
-number of jobs to run in any hour of the day.
+This job definition adds a few things: extracts, invocationsPerHour, 
+a random number of iterations, and geoDistribution. 
+
+At runtime, the functions provided in the 'extracts' array run on the
+response, and the return values of those functions get placed as
+additional values in the job context. These new values can subsequently
+be referenced in templates, as described previously. In this example,
+the oauth_bearer_token is extracted and inserted as a bearer token in
+all subsequent requests. You can get pretty fancy with the extracts,
+specifying values in the payload or the url path. 
+
+The top-level property named "invocationsPerHour" tells the loadgen
+server the number of jobs to run in each hour of the day.  This isn't
+the number of requests, it's the number of jobs, each of which may have
+numerous requests. So be careful. If you set this to 60, you will get 60
+jobs per hour, one per minute. This number specifies a target. The
+loadgen server can't guarantee that it will run this number of jobs. For
+example, suppose your jobs take more than 60 seconds to run. If you then
+specify 60 jobs per hour, the loadgen server will not finish the first
+job before it needs to start the second. This won't ever happen as the
+loadgen server serialized the job requests. So be aware.
 
 The geoDistribution property on the job specifies whether to simulate
 geo-distributed load as the job runs, via the X-Forwarded-For header.
 Set this property to zero in the job definition if you do not want
-geo-distributed load. If you omit the property, you get the default,
-which is geo distributed load.
+geo-distributed load. If you omit the property, or set it to non-zero,
+you get the default behavior, which is an X-forwarded-for header that
+simulates geo distributed load.
 
-The url property in the request specifies a relative or absolute URL. If
-you specify a relative url, then the scheme and domain name from the
-"job defaults" will be prepended to the url before it is used.  If you
-specify a fully qualified url, then the "job defaults" values are
-ignored for that request.
+This job also includes multiple sequences with multiple requests in
+each. The second sequence in this example shows how to specify a random
+number of iterations. Just use a snip of javascript code that uses
+Math.random().
 
 
+
+A Final Example
+--------------------------------
+
+Consider this job definition: 
+
+    {
+      "name": "job1",
+      "description": "Login to the Sonoa service",
+      "defaultProperties": {
+        "scheme": "https",
+        "host": "api.sonoasystems.net",
+        "headers" : {
+          "Accept" : "application/json",
+          "content-type" : "application/json"
+        }
+      },
+
+      "initialContext" : {
+        "creds" : [
+          {"username":"Chris", "password":"Haljous#"},
+          {"username":"Andrea", "password":"92iu2011"},
+          {"username":"Jordan", "password":"ikindalikeapis@#"}
+        ]
+      },
+
+      "sequences" : [{
+        "description" : "login",
+        "iterations" : 1,
+        "requests" : [ {
+          "url" : "/v1/login",
+          "method" : "post",
+          "imports" : [ {
+            "description" : "choose a set of credentials",
+            "fn" : "function(ctx) {return Math.floor(Math.random() * ctx.creds.length);}",
+            "valueRef" : "credNum"
+          }],
+          "headers" : {
+            "authorization" : "Basic {Base64.encode({creds[credNum].username + ':' + creds[credNum].password)}"
+          },
+          "extracts" : [ {
+            "description" : "extract the login token",
+            "fn" : "function(obj,hdr) {return obj.login.token;}",
+            "valueRef" : "oauth_bearer_token"
+          }]
+        }]
+      }]
+    }
+
+This one includes a new property on the request - "imports".  The imports
+are functions that run and inject values into the context. 
+
+The imports are similar to the extract functions; the imports run before
+the call and get only the context. The extract functions run after the
+call returns, and get the payload and the header collection as arguments.
+Both import and extract functions can inject values into the context.
+
+In this example, the import selects one of the N credentials that are
+available in the initial context. The number is injected into the
+context as credNum. Then, the payload is contrived using a template that
+relies on that credNum value.
+
+Also, this example shows how to use the Base64 object in a template. 
+The Base64 object includes an encode and a decode function. 
 
 
 Interesting Files
 ----------------------
 
-* `server4.js`  
-  a simple REST server implemented in nodejs, with express.  For the http client function it uses slimNodeHttpClient. It relies on q for promises.  Accepts APIs on the jobs under management. 
+* `server5.js`  
+  a  REST server implemented in nodejs, with express.  For the http client function it uses slimNodeHttpClient. It relies on q for promises.  Accepts APIs on the jobs under management. 
 
 * `slimNodeHttpClient.js`  
   a slim http client for node that implements q's promises. The base http client in node is heinous. This gets require'd by server4.js . It is used for all outbound http communications including those to App Services. We could use the app services nodejs client library, but then there are other outbound requests that go to arbitrary http endpoints. This server uses a common http client library for the purpose. 
@@ -268,14 +374,8 @@ Interesting Files
 * `weightedRandomSelector.js`  
   a module that provides a weighted random selector. This allows the server to randomly select a city based on population, for each job. Then, using the geo-to-ip database, it selects an IP address to insert into the contrived X-Forwarded-For header. 
 
-* `etl1.js`  
+* `etl5.js`  
   a simple command-line nodejs tool that loads the specified "model" file for a job into App Services. 
-
-* `parseCitiesPop.js`  
-  a one-time use program to parse the txt file containing the list of US cities and population from wikipedia, and populate App Services with that data. 
-
-* `FileReader.js`  
-  a line-by-line file reader for nodejs, used by parseCitiesPop.js
 
 * `model.json` and `model2.json`  
   example model files for use with etl1.js
@@ -285,168 +385,48 @@ Interesting Files
 
 
 
-Less Interesting Files
-----------------------------------
-
-These were constructed during the R&D effort.  I may remove these later.
-
-* `server3.js`  
-  a simple REST nodejs server, similar to server4.js  above, but implemented with restify for the http client and server. Accepts APIs on the jobs under management. I'm no longer updating this module. 
-
-* `retrieve1.js`  
-a Nodejs program intended for use from the command line. It shows how to retrieve the "job model" from App Services
-
-* `run3.js`  
-another nodejs command-line tool, shows how to retrieve the all the stored jobs, and then run each one.
-
-
-
-Data Model
-----------------------
-
-The NodeJS app is itself strictly an API server.  It presents a simple
-interface to manage resources known as jobs. The main point is to
-generate load, but before generating load we have to know what kind of
-requests to send. This is described in the data model.
-
-Jobs consist of a server name and scheme, a set of default http headers
-to send with each request, 1..N "included" request sequences, and a
-reference to a load-profile entity, which simply describes how many
-requests to make in a given hour of the day.
-
-All of the job definition metadata is stored in App Services. Jobs are
-linked to sequences within App Services via the "includes" entity
-relationship, so that a GET on
-`api.usergrid.com/org/app/jobs/{job-id}/includes/sequences` will give
-all the sequences for a job.  Likewise there is a "uses" relationship
-that links jobs to the load profile.  But actually the Loadgen server
-completely wraps the App Services store, so that a client of the loadgen
-API server need not know about the details of the storage or these
-entity relationships.
-
-In more detail, a sequence consists of 1..M "requests", a desired
-iteration count for the sequence (1..?), and a time to delay between
-successive iterations. Here again, a link in App Services connects
-sequences to its requests, but this is not apparently to loadgen client applications. 
-
-A request consists of a descriptive name, an HTTP verb, a url path, a
-set of 0..P HTTP headers particular for this request, optionally a
-payload for the request, and a set of extractions to evaluate from the
-response.
-
-For example:
-
-* `GET /jobs`  
-    Get the list of defined jobs. Though in App
-    Services there are distinct entities of type {jobs, sequences,
-    requests, lprofile}, the loadgen server exposes just one toplevel
-    entity type: jobs
-
-* `GET /jobs/{job-id}`  
-   Does the obvious. 
-
-* `PUT /jobs/{job-id}`  
-   Partial put to update an entity definition.
-   This isn't implemented yet!
-
-* `POST /jobs`  
-    create a new job, given the posted entity definition.
-    This isn't implemented yet! 
-
-
-Example: A typical flow might be a job with 2 sequences; the first will
-consist of a single request, that sends a username/password to obtain a
-token, and then extracts the OAuth Bearer token from the payload.  The
-second sequence consists of a series of 3 requests that is performed a
-variable number of times, each time sending the extracted token in an
-Authorization header.
-
-
 Job Control
 ----------------------
 
-In addition to the data access APIs shown above, there are a few job control APIs:
+The "run status" of a job is known only to the loadgen server. A running
+job implies a pending setTimeout() call in the Nodejs process; when it
+fires, the loadgen server sends out the next round of requests.  When
+the loadgen server shuts down, any setTimeout() calls for "running" jobs
+then become irrelevant, and so all jobs that were previously running are
+now stopped. Hence the run state is ephemeral and known only to the
+instance of the job server.
 
-* `POST /jobs/{job-id}?action=start`  
-   to begin running the job. The job runs "forever".  The payload should be a
-   application/json containing the initial context for the job.
-   Example:
+If multiple loadgen servers are running at the same time, they will have
+multiple independent views of the run status of any job. In fact 2
+loadgen servers could both run the same job, which would imply double
+the configured load on a given API. Resolving this is left for a future
+version of this code.
 
-        curl -i -X POST "http://localhost:8001/jobs/d73f14f4-f3b2-11e2-b505-6124ac12ea5b?action=start"  
-            -H "Content-Type: application/json"  
-            -d '{"username":"Larry", "password" : "HopefulPressure"}'
-
-   Then, request headers and payload can reference these values as with {username} or {password}.
-
-
-* `POST /jobs/{job-id}?action=stop`  
-   to stop running the job.
-
-
-Jobs run "forever" unless they turn themselves off. It is possible for a
-job itself to invoke the action=stop url on the job server. In this case
-it would turn itself off.
-
-The "run status" of a job is known only to the loadgen server.  It is
-not stored in App Services, as this status depends on the loadgen server
-process continuing to operate. A "running" job implies a pending
-setTimeout() call in the Nodejs process; when it fires, the loadgen
-server sends out the next round of requests.  When the loadgen server
-shuts down, any setTimeout() calls for "running" jobs then become
-irrelevant, and so all jobs that were previously running are now
-stopped. Hence the run state is ephemeral and known only to the instance
-of the job server.
-
-This implies that if multiple loadgen servers are running at the same
-time, they will have multiple independent views of the run status of any
-job. In fact 2 loadgen servers could both run the same job, which would
-imply double the configured load on a given API.  Resolving this is left
-for a future version of this code.
 
 
 Creating a Job
 ----------------------
 
-The resource model in App Services is
+There is a command line tool that loads jobs into App Services: etl5.js
 
-    /jobs/{job-id}
-    /jobs/{job-id}/includes/
-    /jobs/{job-id}/includes/{sequence-id}
-    /jobs/{job-id}/includes/{sequence-id}/references
-    /jobs/{job-id}/includes/{sequence-id}/references/{request-id}
+To use etl5.js , create the job definition in json format, in a text
+file using your favorite text editor.  Then from a bash prompt, run the
+etl5.js script, specifying the name of that file.  It will create a new
+job in the store.
 
 
-To fully create a complete job definition the loadgen server must:
-  - create the basic job
-  - add sequences to the job
-  - add requests to each sequence
-  - create a load profile and add it to the job
-
-Each of these steps requires an HTTP REST call to App Services. 
-
-There is a command line tool that loads jobs into App Services: etl1.js
-
-It wraps that storage model, so that you can pass it a single object graph, and
-it will decompose that object and store it all appropriately into App Services.
-This is currently the easiest way to create new jobs. 
-
-To use etl1.js , create the job definition in json format, in a text file using
-your favorite text editor.  Then run the etl1.js script, specifying the name of
-that file.  It will create a new job in the store.
+BUG - must modify etl5.js to specify the org/app and app services creds. 
 
 As a future enhancement, I may modify the loadgen tool so that it also performs
 this work, and I may implement a suitable UI for that purpose. This is not yet
-implemented. For now use etl1.js. 
-
-
-xxxxx
+implemented. For now use the command-line script. 
 
 
 
 Some additional details:
 -------------------------
 
-The extracts, payload, and delayBefore are all optional parts of a
+The imports, extracts, payload, and delayBefore are all optional parts of a
 request. The payload makes sense only for a PUT or POST. It's always JSON.
 The extracts is an array of objects, each of which contains a description,
 the name of a variable, and a function, specified in JavaScript. These
@@ -454,7 +434,7 @@ functions accept two arguments, the body and the headers, and get evaluated
 after the response has been received for the request. The return value of
 the function gets stored in a context variable associated to the job with
 the name specified in "valueRef".  The description for the extract is just
-for documentation purposes.
+for your own documentation purposes.
 
 For example, an extract like this:
 
@@ -472,11 +452,17 @@ For example, an extract like this:
 called login_token. The context is attached to the job, and is then
 accessible to any subsequent request in the job.
 
-The contents of extracted values can be inserted into the headers, paths, or
+The import functions work the same way but they accept only the context
+as an argument. This way you could inject into the context some value
+that depends on other existing vaues in the context. The imports run
+before payloads, headers, and urlpaths are determined for calls; the
+extracts run after the calls return.
+
+The contents of context values can be inserted into the headers, paths, or
 payloads of subsequent requests in the sequence or the requests of subsequent
 sequences, using templates.  Curly braces denote the values to inject. 
 
-For example, to later insert the values of these context variables into
+For example, to insert the values of context variables into
 the headers or payloads of subsequent outbound requests, specify things
 like this:
 
@@ -501,6 +487,10 @@ like this:
 
       "url" : "/foo/{key}/{href}"
 
+...which is equivalent to :
+
+      "url" : "/foo/{key + '/' + href}"
+
 This works in any string: in the url, in a header, or in an arbitrary
 payload property. If you need a curly-brace enclosed thing in your string
 and don't want it to be expanded or interpreted at runtime, use
@@ -512,9 +502,9 @@ double-curlies. Therefore, this
 
      /foo/bar/{baz}
 
+I recommend that you use single quotes within the extract and import
+functions.  Or, escape the double quotes.
 
-I recommend that you use single quotes within the extract functions.
-Or, escape the double quotes.
 
 
 If you want the request rate to vary over time, you need to specify a load profile in
@@ -523,78 +513,34 @@ number of job runs per hour, for hours 0..24.
 
 Add a load profile to a job like this:
 
-    {
-      "name": "myloadprofile",
-      "perHourCounts": [44, 35, 40, 36, 27, 40, 40, 
+    "invocationsPerHour": [44, 35, 40, 36, 27, 40, 40, 
       54, 57, 62, 54, 61, 73, 70, 53, 50, 
       47, 62, 74, 88, 83, 77, 70, 51]
-    }
-
-The array called `perHourCounts` should be the number of times the job should
-run per hour, for each hour from 0 to 23. Be thoughtful about choosing these
-numbers. Jobs that have many requests may take a minute to run or more, in which
-case running 60 of those per hour is impractical. The way it works is, the
-server divides the time in an hour by the number of times to run the job. This
-give the interval on which to invoke one job.
-
-If you do not add a load profile to a job, the server defaults to running the
-job N times per hour. Currently N is 60, so such a job runs once every 60
-seconds, all day long. This will work but it won't give you a very nice
-analytics load chart, because load does not vary over itme.
 
 
+The array called `invocationsPerHour` should be the number of times the
+job should run per hour, for each hour from 0 to 23. Be thoughtful about
+choosing these numbers. Jobs that have many requests may take a minute
+to run or more, in which case running 60 of those per hour is
+impractical. The way it works is, the server divides the time in an hour
+by the number of times to run the job. This give the interval on which
+to invoke one job.
 
-Design Notes
-----------------------
-
-The server3.js file uses the q module for promises, which is a framework
-for managing ordered execution of asynchronous operations. When you have
-a chain of asynch operations that you'd like to perform in order, like a
-series of HTTP calls, and the subsequent operation should be performed
-only after the prior operation completes, you can design a giant pyramid
-of nested callbacks, or you can use promises to untangle that mess.
-
-Read more at https://github.com/promises-aplus/promises-spec
-
-In loadgen, a sequence of requests is really a sequence of HTTP calls, and some
-housekeeping (extractions, forced delays), around those calls. In this
-implementation, each of those requests is a promise, which runs
-asynchronously. A sequence therefore results in a chain of linked promises.
-
-Each promise receives a "context", which it uses to run its
-request. Within the context are things like: the job definition (which
-requests to run, how often, in what order, etc), the state of the job
-(eg, which sequence is currently executing, which iteration of that
-sequence, and within the sequence which request is next to run), the
-http client object to use for the outbound requests, the values
-extracted from previous responses, the job start time, and so on. Each
-promise updates its context and then returns it, which allows chaining
-to the next promise.
-
-When running a job, the chain of promises for a job stops when the last
-request of the last iteration of the last sequence finishes. At that
-point, the server adds a setTimeout() call as the last link in the
-promise chain.  This timeout wakes up after the appropriate time given
-the desired rate of requests for that job (remember, that rate varies by
-hour) to begin running the job again.
-
-In this way, the context flows through the chain and is accessible to
-each asynchronous outbound http request.
-
-"Starting a job" implies kicking off this chain of promises, and storing
-the jobid and its timeout object in an in memory hashtable called
-"activeJobs". Stopping a job involves cancelling the timeout associated
-to the given jobid. There's a race condition here. 
+If you do not add a load profile to a job, the server defaults to
+running the job N times per hour. Currently N is 60, so such a job runs
+once every 60 seconds, all day long. This will work but it won't give
+you a very nice analytics load chart, because load does not vary over
+itme.
 
 
 Operations Notes
 ----------------------
 
-The JS files here are NodeJS scripts.  They also require some other node
-modules, including: q, sleep, assert, and fs.  To run these sripts, including
-server4.js, you may have to:
+The JS files here are NodeJS scripts. They also require some other node
+modules, including: express, q, sleep, assert, and fs.  To run these
+sripts, including server5.js, you may have to:
 
- `$ npm install q sleep`
+ `$ npm install`
 
 in your local directory.
 
@@ -604,7 +550,6 @@ Bugs
 ----------------------
 
 - OPTIONS and HEAD are not yet supported as verbs in the requests that comprise a job
-- In the loadgen server, the job store is hardcoded as an App Services org+app under my personal account. This should be specifyable in the UI.
 - The companion UI to manage job definitions is pretty limited and ugly.
 - When the token to contact App Services expires, the loadgen server stops work, unable to read jobs. Need to implement token refresh.
 - Currently the loadgen server allows outbound calls within a job to specify a variable X-Forwarded-For header.  The load distribution is always based on population distribution. This works, but  there should be a way to allow different distributions for XFF.
