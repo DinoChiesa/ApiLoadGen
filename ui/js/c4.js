@@ -221,9 +221,10 @@ function MainController ($scope, $http, $dialog, $q /*, $httpProvider , $compile
 
     // subsequently, use this in http requests:
     // Authorization: Bearer {access_token}
-    var loginPayload = { 'grant_type': 'password', username: creds.username, password: creds.password,
-                       org:creds.org, app:creds.app},
-        loginHttpConfig = { headers:{ 'Content-Type': 'application/json', 'Accept': 'application/json'} };
+    var loginPayload = { 'grant_type': 'password', username: creds.username, password: creds.password},
+        loginHttpConfig = { headers:{ 'Content-Type': 'application/json',
+                                      'Accept': 'application/json',
+                                      'x-appsvcs': creds.org + ':' + creds.app }};
 
     // TODO: proxy the app services login from the loadgen server
 

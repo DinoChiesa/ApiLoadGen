@@ -238,6 +238,7 @@ Consider this job definition:
         {
           "description" : "query user item (self)",
           "iterations" : "Math.floor(Math.random() * 5) + 4",
+          "delayBetweenIterations" : "Math.floor(Math.random() * 300) + 120",
           "requests" : [ 
             {
               "url" : "/v1/ictrl/{hrefs.user}",
@@ -262,7 +263,7 @@ Consider this job definition:
     }
 
 This job definition adds a few things: extracts, invocationsPerHour, 
-a random number of iterations, and geoDistribution. 
+a random number of iterations, delayBetweenIterations, and geoDistribution. 
 
 At runtime, the functions provided in the 'extracts' array run on the
 response, and the return values of those functions get placed as
@@ -291,9 +292,13 @@ you get the default behavior, which is an X-forwarded-for header that
 simulates geo distributed load.
 
 This job also includes multiple sequences with multiple requests in
-each. The second sequence in this example shows how to specify a random
-number of iterations. Just use a snip of javascript code that uses
-Math.random().
+each. The second sequence in this example shows how to specify a varying
+number of iterations. Just use a javascript expression that resolves to
+a number.  For example, "Math.floor(Math.random() * 3) + 2".  There is
+also a delayBetweenIterations property which can be a pure numeric, or a
+string which holds a Javascript expression that resolves to a numeric.
+If you omit any of these values, iterations defaults to 1 and
+delayBetweenIterations defaults to zero.
 
 
 
@@ -426,8 +431,11 @@ implemented. For now use the command-line script.
 Some additional details:
 -------------------------
 
-The imports, extracts, payload, and delayBefore are all optional parts of a
-request. The payload makes sense only for a PUT or POST. It's always JSON.
+The payload, extracts, imports, and delayBefore are all optional parts of a
+request. 
+
+The payload makes sense only for a PUT or POST. It's always JSON.
+
 The extracts is an array of objects, each of which contains a description,
 the name of a variable, and a function, specified in JavaScript. These
 functions accept two arguments, the body and the headers, and get evaluated
@@ -505,6 +513,11 @@ double-curlies. Therefore, this
 I recommend that you use single quotes within the extract and import
 functions.  Or, escape the double quotes.
 
+The delayBefore is specified in milliseconds.  You can specify a string
+which includes a Javascript expression that resolves to a numeric value,
+for example something like
+     "Math.floor(Math.random() * 150) + 400" 
+..will cause a delay from 400 - 550 ms, before the request. 
 
 
 If you want the request rate to vary over time, you need to specify a load profile in
@@ -537,7 +550,7 @@ Operations Notes
 ----------------------
 
 The JS files here are NodeJS scripts. They also require some other node
-modules, including: express, q, sleep, assert, and fs.  To run these
+modules, including: express, q, assert, and fs.  To run these
 sripts, including server5.js, you may have to:
 
  `$ npm install`

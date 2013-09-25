@@ -19,7 +19,7 @@
 //
 //
 // created: Mon Jul 22 03:34:01 2013
-// last saved: <2013-September-24 21:17:02>
+// last saved: <2013-September-25 16:37:42>
 // ------------------------------------------------------------------
 //
 // Copyright © 2013 Dino Chiesa
@@ -29,7 +29,7 @@
 
 var assert = require('assert'),
     q = require ('q'),
-    sleep = require('sleep'),
+    //sleep = require('sleep'),
     http = require('http'),
     request = require('./slimNodeHttpClient.js'),
     WeightedRandomSelector = require('./weightedRandomSelector.js'),
@@ -52,10 +52,8 @@ var assert = require('assert'),
     reUuidStr = '[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}',
     reUuid = new RegExp(reUuidStr);
 
-if (typeof String.prototype.startsWith != 'function') {
-  String.prototype.startsWith = function (str){
-    return this.slice(0, str.length) == str;
-  };
+function startsWith (str, frag){
+  return str.slice(0, frag.length) == frag;
 }
 
 
@@ -139,7 +137,7 @@ function getModelOptions(param) {
 
 
 function extractBearerToken(authzHdr) {
-  if ( !authzHdr || !authzHdr.startsWith('Bearer ')) {
+  if ( !authzHdr || !startsWith(authzHdr, 'Bearer ')) {
     return null;
   }
   return authzHdr.slice(7);
@@ -508,8 +506,10 @@ function invokeOneRequest(context) {
   // 1. delay as appropriate
   if (req.delayBefore) {
     p = p.then(function(ctx){
-      sleep.usleep(req.delayBefore * 1000);
-      return ctx;
+      var deferredPromise = q.defer(),
+          t = resolveNumeric(req.delayBefore);
+      setTimeout(function() { deferredPromise.resolve(ctx); }, t);
+      return deferredPromise.promise;
     });
   }
 
@@ -856,10 +856,11 @@ function runJob(context) {
   sequence = job.sequences[state.sequence];
   if (state.request === 0 && state.iteration !== 0) {
     if (sequence.delayBetweenIterations) {
-      p = p.then(function(c) {
-        var t = resolveNumeric(sequence.delayBetweenIterations);
-        sleep.usleep(t * 1000);
-        return c; // context, for chaining
+      p = p.then(function(ctx){
+        var deferredPromise = q.defer(),
+            t = resolveNumeric(sequence.delayBetweenIterations);
+        setTimeout(function() { deferredPromise.resolve(ctx); }, t);
+        return deferredPromise.promise;
       });
     }
   }
